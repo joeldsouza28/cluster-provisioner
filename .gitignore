@@ -5,3 +5,4 @@
 .terraform.lock.hcl
 *.log
 __pycache__
+*.terraform.tfstate.lock.info
