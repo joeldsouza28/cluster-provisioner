@@ -3,9 +3,10 @@ import os
 import subprocess
 from fastapi.responses import StreamingResponse
 import time
-from google.cloud import container_v1
-from kubernetes import client, config
+from google.cloud import container_v1, compute_v1
 import json
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.containerservice import ContainerServiceClient
 
 app = FastAPI()
 
@@ -42,6 +43,9 @@ async def upload_gcp_key(file: UploadFile = File(...)):
             os.environ["TF_VAR_client_id"] = data["clientId"]
             os.environ["TF_VAR_client_secret"] = data["clientSecret"]
             os.environ["TF_VAR_tenant_id"] = data["tenantId"]
+            os.environ["AZURE_CLIENT_ID"] = data["clientId"]
+            os.environ["AZURE_TENANT_ID"] = data["tenantId"]
+            os.environ["AZURE_CLIENT_SECRET"] = data["clientSecret"]
             os.environ["TF_VAR_subscription_id"] = data["subscriptionId"]
 
 
@@ -129,25 +133,72 @@ def stream_logs():
     """API endpoint to stream logs in real-time."""
     return StreamingResponse(log_streamer("terraform_output.log"), media_type="text/plain")
 
+def get_all_gcp_zones():
+    """Fetches all available GCP zones dynamically."""
+    compute_client = compute_v1.ZonesClient()
+    project_id = os.environ.get("TF_VAR_project_id")
+    zones = [zone.name for zone in compute_client.list(project=project_id)]
+    return zones
 
-def list_gke_clusters(project_id: str, region: str):
+def list_gke_clusters():
     """Lists GKE clusters in a given project and region."""
-    client = container_v1.ClusterManagerClient()
-    parent = f"projects/{project_id}/locations/{region}"
+    # parent = f"projects/{project_id}/locations/{region}"
 
 
     # container_v1
     try:
-        response = client.list_clusters(parent=parent)
-        clusters = [{"name": c.name, "status": c.status, "location": c.location} for c in response.clusters]
-        return clusters if clusters else {"message": "No clusters found"}
+        client = container_v1.ClusterManagerClient()
+        project_id = os.environ.get("TF_VAR_project_id")
+        region = os.environ.get("TF_VAR_region")
+        
+        all_clusters = []
+ 
+        response = client.list_clusters(parent=f"projects/{project_id}/locations/-")
+        for cluster in response.clusters:
+            all_clusters.append({
+                "name": cluster.name,
+                "location": cluster.location,
+                "status": cluster.status,
+                "cloud": "GCP"
+            })
+        return all_clusters 
+    
     except Exception as e:
-        return {"error": str(e)}
+        print(e)
+        return []
+    
+def list_azure_clusters():
+    try:
+        credential = DefaultAzureCredential()
+        SUBSCRIPTION_ID = os.environ.get("TF_VAR_subscription_id")
+        aks_client = ContainerServiceClient(credential, SUBSCRIPTION_ID)
 
-@app.get("/list-gke-clusters/")
-def get_gke_clusters(project_id: str, region: str):
+        clusters = aks_client.managed_clusters.list()
+        cluster_list = []
+        
+        for cluster in clusters:
+            cluster_list.append({
+                "name": cluster.name,
+                "location": cluster.location,
+                "provisioning_state": cluster.provisioning_state,
+                "cloud": "Azure"
+            })
+
+        return cluster_list
+    except Exception as ex:
+        print(ex)
+        return []
+
+@app.get("/list-clusters/")
+def get_gke_clusters():
     """API endpoint to list GKE clusters in a given project and region."""
-    return list_gke_clusters(project_id, region)
+    gke_clusters = list_gke_clusters()
+    azure_clusters = list_azure_clusters()
+    return {
+        "clusters": gke_clusters + azure_clusters
+    }
+    
+
 
 @app.post("/add-gke-cluster/")
 async def add_cluster(req: Request, background_tasks: BackgroundTasks):
