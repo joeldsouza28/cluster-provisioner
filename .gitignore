@@ -6,3 +6,4 @@
 *.log
 __pycache__
 *.terraform.tfstate.lock.info
+azure_keys.json
