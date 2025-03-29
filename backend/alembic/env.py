@@ -7,7 +7,7 @@ from sqlalchemy.future import Connection
 import os
 from backend.db.connection import Base
 from backend.db.models import load_all_models
-# from backend.settings import settings
+# from portfolio_service.settings import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -74,7 +74,7 @@ async def run_migrations_online() -> None:
     In this scenario we need to create an Engine
     and associate a connection with the context.
     """
-    connectable = create_async_engine(os.environ.get("DB_URL"))
+    connectable = create_async_engine(os.environ.get("DB_URL"),)
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
@@ -83,6 +83,8 @@ loop = asyncio.get_event_loop()
 if context.is_offline_mode():
     task = run_migrations_offline()
 else:
+    print("here")
     task = run_migrations_online()
+
 
 loop.run_until_complete(task)

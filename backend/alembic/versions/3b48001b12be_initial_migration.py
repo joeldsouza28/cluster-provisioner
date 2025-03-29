@@ -1,8 +1,8 @@
-"""empty message
+"""Initial migration
 
-Revision ID: 88e6ae54e05a
+Revision ID: 3b48001b12be
 Revises: 
-Create Date: 2025-03-29 18:39:28.581268
+Create Date: 2025-03-29 21:41:34.346105
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '88e6ae54e05a'
+revision: str = '3b48001b12be'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,6 +27,7 @@ def upgrade() -> None:
     sa.Column('client_secret', sa.String(), nullable=True),
     sa.Column('tenant_id', sa.String(), nullable=True),
     sa.Column('subscription_id', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_azure_keys_id'), 'azure_keys', ['id'], unique=False)
@@ -38,6 +39,7 @@ def upgrade() -> None:
     sa.Column('client_email', sa.String(), nullable=True),
     sa.Column('client_id', sa.String(), nullable=True),
     sa.Column('type', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_gcp_keys_id'), 'gcp_keys', ['id'], unique=False)
