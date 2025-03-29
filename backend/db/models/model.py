@@ -1,6 +1,5 @@
 from backend.db.connection import Base
-from sqlalchemy import create_engine, Column, Integer, String
-
+from sqlalchemy import Column, Integer, String, DateTime, func
 
 class GCPKey(Base):
     __tablename__ = "gcp_keys"
@@ -12,6 +11,7 @@ class GCPKey(Base):
     client_email = Column(String)
     client_id = Column(String)
     type = Column(String)
+    created_at = Column(DateTime, server_default=func.now()) 
 
 
 class AzureKey(Base):
@@ -24,3 +24,4 @@ class AzureKey(Base):
     client_secret = Column(String)
     tenant_id = Column(String)
     subscription_id = Column(String)
+    created_at = Column(DateTime, server_default=func.now()) 

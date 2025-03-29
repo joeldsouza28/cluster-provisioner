@@ -45,7 +45,7 @@ async def run_migrations_offline() -> None:
 
     """
     context.configure(
-        url=str(settings.db_url),
+        url=os.environ.get("DB_URL"),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Request, BackgroundTasks, HTTPException
+from fastapi import FastAPI, File, UploadFile, Request, BackgroundTasks, HTTPException, Depends
 import os
 import subprocess
 from fastapi.responses import StreamingResponse
@@ -7,27 +7,17 @@ from google.cloud import container_v1, compute_v1
 import json
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.containerservice import ContainerServiceClient
+from backend.db.connection import register_startup_event, register_shutdown_event
+from backend.db.dependency import get_db_connection
+from backend.db.dao import GcpDao
 
 app = FastAPI()
+register_startup_event(app=app)
+register_shutdown_event(app=app)
 
 GCP_KEY_PATH = "/tmp/terraform-sa-key.json"  # Temporary storage for the key
 AZURE_KEY_PATH = "/tmp/azure.json"  # Temporary storage for the key
 
-
-@app.post("/upload-gcp-key/")
-async def upload_gcp_key(file: UploadFile = File(...)):
-    try:
-        # Save the uploaded JSON key file
-        with open(GCP_KEY_PATH, "wb") as f:
-            f.write(await file.read())
-
-        # Set the environment variable for Terraform authentication
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
-        
-
-        return {"message": "GCP key uploaded and configured successfully"}
-    except Exception as e:
-        return {"error": str(e)}
 
 @app.post("/upload-azure-key/")
 async def upload_gcp_key(file: UploadFile = File(...)):
@@ -54,40 +44,13 @@ async def upload_gcp_key(file: UploadFile = File(...)):
         return {"error": str(e)}
 
 
-
-@app.post("/set-gcp-project-region")
-async def set_gcp_project_and_region(req: Request):
-    try:
-        data = await req.json()
-        project_id = data.get("project_id")
-        region = data.get("region")
-        os.environ["TF_VAR_project_id"] = project_id
-        os.environ["TF_VAR_region"] = region
-        return {"message": "project and region set"}
-    except Exception as e:
-        return {"error": str(e)}
-        
-
-@app.post("/set-gcp-gke-data")
-async def set_gke_data(req: Request):
-    try:
-        data = await req.json()
-        cluster_name = data.get("cluster_name")
-        node_pool_name = data.get("node_pool_name")
-        machine_type = data.get("machine_type")
-        os.environ["TF_VAR_machine_type"] = machine_type
-        os.environ["TF_VAR_cluster_name"] = cluster_name
-        os.environ["TF_VAR_node_pool_name"] = node_pool_name
-        return {"message": "cluster data set"}
-    except Exception as e:
-        return {"error": str(e)}
         
 
 task_running=True
 def run_gke_terraform():
     """Runs Terraform in the background."""
     with open("terraform_output.log", "w") as log_file:
-        terraform_dir = "../infra/gcp"
+        terraform_dir = "./infra/gcp"
         process = subprocess.Popen(
             ["terraform", "apply", "-auto-approve"],
             cwd=terraform_dir,
@@ -110,10 +73,6 @@ def run_azure_terraform():
         process.wait() 
     task_running=False
 
-@app.post("/create-gke-cluster")
-async def create_gke_cluster(background_tasks: BackgroundTasks):
-    background_tasks.add_task(run_gke_terraform)
-    return {"message": "Terraform execution started in background."}
 
 
 
@@ -149,7 +108,6 @@ def list_gke_clusters():
     try:
         client = container_v1.ClusterManagerClient()
         project_id = os.environ.get("TF_VAR_project_id")
-        region = os.environ.get("TF_VAR_region")
         
         all_clusters = []
  
@@ -198,26 +156,44 @@ def get_gke_clusters():
         "clusters": gke_clusters + azure_clusters
     }
     
+@app.post("/add-gcp-keys")
+async def add_gcp_key(req: Request, db=Depends(get_db_connection)):
+    data = await req.json()
+    gcp_dao = GcpDao(db=db)
+
+    key_data = {
+        "client_id": data.get("client_id"),
+        "client_email": data.get("client_email"),
+        "private_key": data.get("private_key"),
+        "private_key_id": data.get("private_key_id"),
+        "project_id": data.get("project_id"),
+        "type": data.get("type")
+    }
+    
+
+    await gcp_dao.add_gcp_keys(data=key_data)
+
+    return {
+        "message": "Key successfully added"
+    }
 
 
 @app.post("/add-gke-cluster/")
-async def add_cluster(req: Request, background_tasks: BackgroundTasks):
+async def add_cluster(req: Request, background_tasks: BackgroundTasks, db=Depends(get_db_connection)):
+
+    gcp_dao = GcpDao(db=db)
+    gcp_keys = await gcp_dao.get_gcp_key()
+    with open(GCP_KEY_PATH, "w", encoding="utf-8") as file:
+        json.dump(gcp_keys, file, ensure_ascii=False, indent=4)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
+    
     data = await req.json()
     cluster_name: str = data.get("cluster_name") 
     location: str = data.get("location")
     machine_type: str = data.get("machine_type")
     node_count: int = data.get("node_count")
-    """
-    API to add a new GKE cluster without deleting existing ones.
-    Example request:
-    {
-        "cluster_name": "new-cluster",
-        "location": "us-central1-a",
-        "machine_type": "e2-medium",
-        "node_count": 3
-    }
-    """
-    TERRAFORM_DIR = "../infra/gcp"
+    
+    TERRAFORM_DIR = "./infra/gcp"
     tf_vars_path = os.path.join(TERRAFORM_DIR, "terraform.auto.tfvars.json")
 
     # Load existing Terraform variables
@@ -247,13 +223,19 @@ async def add_cluster(req: Request, background_tasks: BackgroundTasks):
 
 
 @app.delete("/delete-gke-cluster/{cluster_name}")
-def delete_cluster(cluster_name: str, background_tasks: BackgroundTasks):
+async def delete_cluster(cluster_name: str, background_tasks: BackgroundTasks, db=Depends(get_db_connection)):
     """
     API to delete a specific GKE cluster.
     Example request: DELETE /delete-gke-cluster/cluster-1
     """
 
-    TERRAFORM_DIR = "../infra/gcp"
+    TERRAFORM_DIR = "./infra/gcp"
+
+    gcp_dao = GcpDao(db=db)
+    gcp_keys = await gcp_dao.get_gcp_key()
+    with open(GCP_KEY_PATH, "w", encoding="utf-8") as file:
+        json.dump(gcp_keys, file, ensure_ascii=False, indent=4)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
 
     tf_vars_path = os.path.join(TERRAFORM_DIR, "terraform.auto.tfvars.json")
 
@@ -316,6 +298,8 @@ def update_azure_tfvars(cluster_data):
     except Exception as e:
         print(f"Error updating tfvars: {e}")
         return False
+
+
 
 @app.post("/add-azure-cluster")
 async def add_azure_cluster(req: Request, background_tasks: BackgroundTasks):
