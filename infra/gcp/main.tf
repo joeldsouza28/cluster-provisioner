@@ -1,3 +1,7 @@
+terraform {
+  backend "gcs" {}  # For GCP
+}
+
 provider "google" {
     project     = var.project_id
     region      = var.region

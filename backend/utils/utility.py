@@ -88,17 +88,38 @@ class GCPUtils():
     def __init__(self, db):
         self.db = db
 
+    async def set_gcp_remote_backend(self, bucket_name):
+        gcp_dao = GcpDao(db=self.db)
+        await gcp_dao.add_gcp_remote_bucket(bucket_name=bucket_name)
+
 
     async def set_gcp_env(self):
 
         gcp_dao = GcpDao(db=self.db)
         gcp_keys = await gcp_dao.get_gcp_key()
-        print(gcp_keys)
+        gcp_bucket_data = await gcp_dao.get_gcp_remote_bucket()
         with open(GCP_KEY_PATH, "w", encoding="utf-8") as file:
             gcp_keys["token_uri"] = "https://oauth2.googleapis.com/token"
             json.dump(gcp_keys, file, ensure_ascii=False, indent=4)
+        
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
         os.environ["TF_VAR_project_id"] = gcp_keys["project_id"]
+        
+        backend_config = f"""bucket  = "{gcp_bucket_data.bucket_name}"
+        prefix  = "terraform/state"
+        """
+
+        config_file = "./infra/gcp/backend.config"
+        with open(config_file, "w") as f:
+            f.write(backend_config)
+
+        process = subprocess.Popen(
+            ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
+            cwd="./infra/gcp",
+        )
+        process.wait()
+        
+        # os.environ["TF_VAR_bucket_name"] = gcp_bucket_data.bucket_name
 
     def update_gcp_tfvars(self, cluster_data):
         TERRAFORM_DIR = "./infra/gcp"
@@ -188,6 +209,12 @@ class AzureUtil():
     def __init__(self, db):
         self.db = db
 
+    async def set_azure_remote_backend(self, data):
+        azure_dao = AzureDao(db=self.db)
+        await azure_dao.add_azure_remote_bucket(data=data)
+
+    
+
     async def set_azure_env(self):
         azure_dao = AzureDao(db=self.db)
         azure_key = await azure_dao.get_azure_key()
@@ -197,7 +224,33 @@ class AzureUtil():
         os.environ["AZURE_CLIENT_ID"] = azure_key["client_id"]
         os.environ["AZURE_TENANT_ID"] = azure_key["tenant_id"]
         os.environ["AZURE_CLIENT_SECRET"] = azure_key["client_secret"]
+
+        os.environ["ARM_CLIENT_ID"] = azure_key["client_id"]
+        os.environ["ARM_CLIENT_SECRET"] = azure_key["client_secret"]
+        os.environ["ARM_SUBSCRIPTION_ID"] = azure_key["subscription_id"]
+        os.environ["ARM_TENANT_ID"] = azure_key["tenant_id"]
         os.environ["TF_VAR_subscription_id"] = azure_key["subscription_id"]
+
+        azure_bucket_data = await azure_dao.get_azure_remote_bucket()
+
+        backend_config = f"""
+        resource_group_name  = "{azure_bucket_data.resource_group_name}"
+        storage_account_name  = "{azure_bucket_data.storage_account_name}"
+        container_name = "{azure_bucket_data.container_name}"
+        key = "{azure_bucket_data.key}"
+        """
+
+
+        config_file = "./infra/azure/backend.config"
+        with open(config_file, "w") as f:
+            f.write(backend_config)
+
+        process = subprocess.Popen(
+            ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
+            cwd="./infra/azure",
+        )
+        process.wait()
+
 
     def update_azure_tfvars(self, cluster_data):
         try:

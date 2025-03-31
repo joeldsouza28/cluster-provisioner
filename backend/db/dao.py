@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.db.models.model import GCPKey, AzureKey, TerraformLogFile
+from backend.db.models.model import GCPKey, AzureKey, TerraformLogFile, GCPRemoteBackendConfig, AzureRemoteBackendConfig
 from sqlalchemy import select, desc, func, update
 
 
@@ -24,7 +24,22 @@ class GcpDao():
 
 
             return data_dict
+        
+    async def add_gcp_remote_bucket(self, bucket_name):
+        gcp_remote_backend = GCPRemoteBackendConfig(bucket_name=bucket_name)
+        self.db.add(gcp_remote_backend)
 
+    async def get_gcp_remote_bucket(self):
+        query = select(GCPRemoteBackendConfig).order_by(desc(GCPRemoteBackendConfig.created_at))
+        data = await self.db.execute(query)
+
+        data = data.scalar_one_or_none()
+        if data:
+            data_dict = data.__dict__.copy()  # Copy to avoid modifying the original object
+            data_dict.pop("_sa_instance_state", None) 
+            data_dict.pop("created_at", None) 
+            data_dict.pop("id", None) 
+            return data
 
 class AzureDao():
     def __init__(self, db: AsyncSession):
@@ -33,6 +48,18 @@ class AzureDao():
     async def add_azure_keys(self, data):
         gcp_data = AzureKey(**data)
         self.db.add(gcp_data)
+
+    async def get_azure_remote_bucket(self):
+        query = select(AzureRemoteBackendConfig).order_by(desc(AzureRemoteBackendConfig.created_at))
+        data = await self.db.execute(query)
+
+        data = data.scalar_one_or_none()
+        if data:
+            data_dict = data.__dict__.copy()  # Copy to avoid modifying the original object
+            data_dict.pop("_sa_instance_state", None) 
+            data_dict.pop("created_at", None) 
+            data_dict.pop("id", None) 
+            return data
 
     async def get_azure_key(self):
         query = select(AzureKey).order_by(desc(AzureKey.created_at))
@@ -47,6 +74,11 @@ class AzureDao():
 
 
             return data_dict
+        
+    async def add_azure_remote_bucket(self, data):
+        gcp_remote_backend = AzureRemoteBackendConfig(**data)
+        self.db.add(gcp_remote_backend)
+
         
 
 class TerraformLogDao():

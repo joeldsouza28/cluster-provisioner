@@ -39,6 +39,20 @@ async def get_gke_clusters(db=Depends(get_db_connection)):
         "clusters": gke_clusters + azure_clusters
     }
     
+@app.post("/add-gcp-remote-backend")
+async def add_gcp_remote_backend(req: Request, db=Depends(get_db_connection)):
+    data = await req.json()
+    gcp_dao = GcpDao(db=db)
+    await gcp_dao.add_gcp_remote_bucket(bucket_name=data.get("bucket_name"))
+
+
+@app.post("/add-azure-remote-backend")
+async def add_azure_remote_backend(req: Request, db=Depends(get_db_connection)):
+    data = await req.json()
+    azure_dao = AzureDao(db=db)
+    await azure_dao.add_azure_remote_bucket(data)
+
+
 @app.post("/add-gcp-keys")
 async def add_gcp_key(req: Request, db=Depends(get_db_connection)):
     data = await req.json()

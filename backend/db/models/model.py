@@ -14,6 +14,26 @@ class GCPKey(Base):
     type = Column(String)
     created_at = Column(DateTime, server_default=func.now()) 
 
+class GCPRemoteBackendConfig(Base):
+    __tablename__ = "gcp_remote_backend_config"
+    id = Column(Integer, primary_key=True, index=True)
+    bucket_name = Column(String)
+    created_at = Column(DateTime, server_default=func.now()) 
+
+
+
+
+class AzureRemoteBackendConfig(Base):
+    __tablename__ = "azure_remote_backend_config"
+    id = Column(Integer, primary_key=True, index=True)
+    resource_group_name = Column(String)
+    storage_account_name = Column(String)
+    container_name = Column(String)
+    key = Column(String)
+    created_at = Column(DateTime, server_default=func.now()) 
+
+
+
 
 class AzureKey(Base):
 
