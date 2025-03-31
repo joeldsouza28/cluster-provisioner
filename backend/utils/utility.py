@@ -83,6 +83,17 @@ def log_streamer(log_id):
 
 
 
+def configure_backend(backend_config, infra):
+    config_file = f"./infra/{infra}/backend.config"
+    with open(config_file, "w") as f:
+        f.write(backend_config)
+
+    process = subprocess.Popen(
+        ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
+        cwd=f"./infra/{infra}",
+    )
+    process.wait()
+
 
 class GCPUtils():
     def __init__(self, db):
@@ -109,16 +120,7 @@ class GCPUtils():
         prefix  = "terraform/state"
         """
 
-        config_file = "./infra/gcp/backend.config"
-        with open(config_file, "w") as f:
-            f.write(backend_config)
-
-        process = subprocess.Popen(
-            ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
-            cwd="./infra/gcp",
-        )
-        process.wait()
-        
+        configure_backend(backend_config=backend_config, infra="gcp")
         # os.environ["TF_VAR_bucket_name"] = gcp_bucket_data.bucket_name
 
     def update_gcp_tfvars(self, cluster_data):
@@ -240,17 +242,11 @@ class AzureUtil():
         key = "{azure_bucket_data.key}"
         """
 
+        backend_config = "./infra/azure/backend.config"
 
-        config_file = "./infra/azure/backend.config"
-        with open(config_file, "w") as f:
-            f.write(backend_config)
+        configure_backend(backend_config=backend_config, infra="azure")
 
-        process = subprocess.Popen(
-            ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
-            cwd="./infra/azure",
-        )
-        process.wait()
-
+    
 
     def update_azure_tfvars(self, cluster_data):
         try:
