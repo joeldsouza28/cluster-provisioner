@@ -3,9 +3,7 @@ from fastapi.responses import StreamingResponse
 from backend.db.connection import register_startup_event, register_shutdown_event
 from backend.db.dependency import get_db_connection
 from backend.db.dao import GcpDao, AzureDao
-from backend.utils import GCPUtils, AzureUtil, event_generator, run_gke_terraform, run_azure_terraform
-import time
-import threading
+from backend.utils import GCPUtils, AzureUtil, log_streamer, run_gke_terraform, run_azure_terraform
 app = FastAPI()
 register_startup_event(app=app)
 register_shutdown_event(app=app)
@@ -16,7 +14,7 @@ task_running = True
 @app.get("/stream-logs/")
 def stream_logs(request: Request):
     """API endpoint to stream logs in real-time."""
-    return StreamingResponse(event_generator(), media_type="text/plain")
+    return StreamingResponse(log_streamer(), media_type="text/plain")
 
 
 # log_thread = threading.Thread(target=lambda: [print(log) for log in log_streamer(log_file_path)])

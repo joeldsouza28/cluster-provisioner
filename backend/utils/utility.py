@@ -8,12 +8,12 @@ import time
 import subprocess
 
 GCP_KEY_PATH = "/tmp/gcp_sa_key.json"  # Temporary storage for the key
-log_file_path = "terraform_output.log"
 
 
 task_running=True
 def run_gke_terraform():
     """Runs Terraform in the background."""
+    global task_running
     with open("terraform_output.log", "w") as log_file:
         terraform_dir = "./infra/gcp"
         process = subprocess.Popen(
@@ -25,12 +25,24 @@ def run_gke_terraform():
         process.wait() 
         task_running=False
 
-
-task_running = True  # Flag to control log streaming
-
-def log_streamer(file_path: str):
-    """Generator function to yield log file contents in real-time."""
+def run_azure_terraform():
+    """Runs Terraform in the background."""
     global task_running
+    with open("terraform_output.log", "w") as log_file:
+        terraform_dir = "./infra/azure"
+        process = subprocess.Popen(
+            ["terraform", "apply", "-auto-approve"],
+            cwd=terraform_dir,
+            stdout=log_file, 
+            stderr=log_file
+        )
+    process.wait() 
+    task_running=False
+
+
+def log_streamer():
+    """Generator function to yield log file contents in real-time."""
+    file_path = "terraform_output.log"
     with open(file_path, "r") as file:
         file.seek(0, 2)  # Move to the end of the file
         while task_running:
@@ -40,36 +52,11 @@ def log_streamer(file_path: str):
                 continue
             yield line
 
-def run_azure_terraform():
-    """Runs Terraform in the background and stops log streaming when done."""
-    global task_running
-    terraform_dir = "./infra/azure"
-    
-    with open(log_file_path, "w") as log_file:
-        process = subprocess.Popen(
-            ["terraform", "apply", "-auto-approve"],
-            cwd=terraform_dir,
-            stdout=log_file,
-            stderr=log_file,
-            text=True
-        )
-    
-    process.wait()  # Wait for Terraform to finish
-    task_running = False  # Stop the log streamer
-
-
-async def event_generator(request):
-    global task_running
-    with open(log_file_path, "r") as file:
-        file.seek(0, 2)  # Move to the end of the file
-        while task_running:
-            if await request.is_disconnected():  # Stop if client disconnects
-                print("Client disconnected, stopping log stream")
-                return
-            line = file.readline()
-            if not line:
-                time.sleep(1)  # Wait for new logs
-                continue
+    time.sleep(2)  # Wait a bit to ensure all logs are written
+    yield "\n--- Final Terraform Output ---\n"
+    with open(file_path, "r") as file:
+        final_lines = file.readlines()[-10:]  # Read the last 10 lines from the log
+        for line in final_lines:
             yield line
 
 
