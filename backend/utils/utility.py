@@ -128,8 +128,6 @@ class GCPUtils():
 
         cluster_name: str = cluster_data.get("name") 
         location: str = cluster_data.get("location")
-        machine_type: str = cluster_data.get("machine_type")
-        node_count: int = cluster_data.get("node_count")
         
         tf_vars_path = os.path.join(TERRAFORM_DIR, "terraform.auto.tfvars.json")
         os.environ["TF_VAR_region"] = location
@@ -142,11 +140,7 @@ class GCPUtils():
             tf_vars = {"clusters": {}}
 
         # Add the new cluster
-        tf_vars["clusters"][cluster_name] = {
-            "location": location,
-            "machine_type": machine_type,
-            "node_count": node_count
-        }
+        tf_vars["clusters"][cluster_name] = cluster_data
 
         # Save updated variables
         with open(tf_vars_path, "w") as f:
@@ -242,7 +236,7 @@ class AzureUtil():
         key = "{azure_bucket_data.key}"
         """
 
-        backend_config = "./infra/azure/backend.config"
+        # backend_config = "./infra/azure/backend.config"
 
         configure_backend(backend_config=backend_config, infra="azure")
 
@@ -264,14 +258,7 @@ class AzureUtil():
             cluster_name = cluster_data["name"]
 
             # Format data to match Terraform structure
-            tf_vars["clusters"][cluster_name] = {
-                "name": cluster_data["name"],
-                "location": cluster_data["location"],
-                "vm_size": cluster_data["vm_size"],
-                "node_count": cluster_data["node_count"],
-                "resource_group_name": cluster_data["resource_group_name"],
-                "dns_prefix": cluster_data["dns_prefix"]
-            }
+            tf_vars["clusters"][cluster_name] = cluster_data
 
             # Save updated tfvars.json
             with open(tf_vars_path, "w") as file:
