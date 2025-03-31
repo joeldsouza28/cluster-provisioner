@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from backend.db.connection import register_startup_event, register_shutdown_event
 from backend.db.dependency import get_db_connection
 from backend.db.dao import GcpDao, AzureDao
-from backend.utils import GCPUtils, AzureUtil, TerraformUtils, log_streamer, run_gke_terraform, run_azure_terraform
+from backend.utils import GCPUtils, AzureUtil, TerraformUtils, log_streamer, run_azure_terraform, run_kubernetes_terraform
 app = FastAPI()
 register_startup_event(app=app)
 register_shutdown_event(app=app)
@@ -92,10 +92,10 @@ async def add_cluster(req: Request, background_tasks: BackgroundTasks, db=Depend
 
     tf_log_id = await tf_utils.get_log_id(provider="GCP")
     # Run Terraform
-    background_tasks.add_task(run_gke_terraform, {"log_id": tf_log_id})
+    background_tasks.add_task(run_kubernetes_terraform, {"log_id": tf_log_id, "terraform_dir": "./infra/gcp"})
 
 
-    return {"message": "Cluster creation started"}
+    return {"message": f"Cluster {data["name"]} creation started", "stream_url": f"/stream-logs/{tf_log_id}"}
 
 
 
@@ -112,10 +112,10 @@ async def delete_cluster(cluster_name: str, background_tasks: BackgroundTasks, d
     tf_log_id = await tf_utils.get_log_id(provider="GCP")
 
     
-    background_tasks.add_task(run_gke_terraform, {"log_id": tf_log_id})
+    background_tasks.add_task(run_kubernetes_terraform, {"log_id": tf_log_id, "terraform_dir": "./infra/gcp"})
     
 
-    return {"message": f"Cluster '{cluster_name}' deletion started"}
+    return {"message": f"Cluster '{cluster_name}' deletion started", "stream_url": f"/stream-logs/{tf_log_id}"}
 
 
 
@@ -135,9 +135,9 @@ async def add_azure_cluster(req: Request, background_tasks: BackgroundTasks, db=
 
     
     # Run Terraform
-    background_tasks.add_task(run_azure_terraform, {"log_id": tf_log_id})
+    background_tasks.add_task(run_kubernetes_terraform, {"log_id": tf_log_id, "terraform_dir": "./infra/azure"})
     
-    return {"message": "Cluster creation triggered successfully"}
+    return {"message": f"Cluster {data["name"]} creation started", "stream_url": f"/stream-logs/{tf_log_id}"}
 
 
 
@@ -154,6 +154,6 @@ async def delete_azure_cluster(cluster_name: str, background_tasks: BackgroundTa
 
     tf_log_id = await tf_utils.get_log_id(provider="Azure")
 
-    background_tasks.add_task(run_azure_terraform, {"log_id": tf_log_id})
+    background_tasks.add_task(run_kubernetes_terraform, {"log_id": tf_log_id, "terraform_dir": "./infra/azure"})
     
-    return {"message": f"Cluster '{cluster_name}' deletion started"}
+    return {"message": f"Cluster '{cluster_name}' deletion started","stream_url": f"/stream-logs/{tf_log_id}"}

@@ -21,14 +21,14 @@ class TerraformUtils():
         return tf_id
     
 
-def run_gke_terraform(data: dict):
+def run_kubernetes_terraform(data: dict):
     """Runs Terraform in the background."""
     global task_running
     tf_log_id = data.get("log_id")
+    terraform_dir = data.get("terraform_dir")
     task_running[tf_log_id] = True
 
     with open(f"terraform_output_{tf_log_id}.log", "w") as log_file:
-        terraform_dir = "./infra/gcp"
         process = subprocess.Popen(
             ["terraform", "apply", "-auto-approve"],
             cwd=terraform_dir,
@@ -103,7 +103,7 @@ class GCPUtils():
     def update_gcp_tfvars(self, cluster_data):
         TERRAFORM_DIR = "./infra/gcp"
 
-        cluster_name: str = cluster_data.get("cluster_name") 
+        cluster_name: str = cluster_data.get("name") 
         location: str = cluster_data.get("location")
         machine_type: str = cluster_data.get("machine_type")
         node_count: int = cluster_data.get("node_count")
