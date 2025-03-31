@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from backend.db.connection import register_startup_event, register_shutdown_event
 from backend.db.dependency import get_db_connection
 from backend.db.dao import GcpDao, AzureDao
-from backend.utils import GCPUtils, AzureUtil, log_streamer, run_gke_terraform, run_azure_terraform
+from backend.utils import GCPUtils, AzureUtil, TerraformUtils, log_streamer, run_gke_terraform, run_azure_terraform
 app = FastAPI()
 register_startup_event(app=app)
 register_shutdown_event(app=app)
@@ -11,10 +11,11 @@ register_shutdown_event(app=app)
 log_file_path = "terraform_output.log"
 
 task_running = True
-@app.get("/stream-logs/")
-def stream_logs(request: Request):
+@app.get("/stream-logs/{log_id}")
+def stream_logs(req: Request):
     """API endpoint to stream logs in real-time."""
-    return StreamingResponse(log_streamer(), media_type="text/plain")
+    log_id = req.path_params.get("log_id")
+    return StreamingResponse(log_streamer(log_id=log_id), media_type="text/plain")
 
 
 # log_thread = threading.Thread(target=lambda: [print(log) for log in log_streamer(log_file_path)])
@@ -83,12 +84,15 @@ async def add_azure_key(req: Request, db=Depends(get_db_connection)):
 async def add_cluster(req: Request, background_tasks: BackgroundTasks, db=Depends(get_db_connection)):
 
     gcp_util = GCPUtils(db=db)
+    tf_utils = TerraformUtils(db=db)
     await gcp_util.set_gcp_env()
 
     data = await req.json()
     gcp_util.update_gcp_tfvars(cluster_data=data)
+
+    tf_log_id = await tf_utils.get_log_id(provider="GCP")
     # Run Terraform
-    background_tasks.add_task(run_gke_terraform)
+    background_tasks.add_task(run_gke_terraform, {"log_id": tf_log_id})
 
 
     return {"message": "Cluster creation started"}
@@ -102,11 +106,13 @@ async def delete_cluster(cluster_name: str, background_tasks: BackgroundTasks, d
     Example request: DELETE /delete-gke-cluster/cluster-1
     """
     gcp_utils = GCPUtils(db=db)
+    tf_utils = TerraformUtils(db=db)
     await gcp_utils.set_gcp_env()
     gcp_utils.delete_from_gcp_tfvars(cluster_name=cluster_name)
+    tf_log_id = await tf_utils.get_log_id(provider="GCP")
 
     
-    background_tasks.add_task(run_gke_terraform)
+    background_tasks.add_task(run_gke_terraform, {"log_id": tf_log_id})
     
 
     return {"message": f"Cluster '{cluster_name}' deletion started"}
@@ -119,13 +125,17 @@ async def add_azure_cluster(req: Request, background_tasks: BackgroundTasks, db=
     API to add a new AKS cluster and trigger Terraform.
     """
     azure_util = AzureUtil(db=db)
+    tf_utils = TerraformUtils(db=db)
     await azure_util.set_azure_env()
     
     data = await req.json()
     azure_util.update_azure_tfvars(cluster_data=data)
+
+    tf_log_id = await tf_utils.get_log_id(provider="Azure")
+
     
     # Run Terraform
-    background_tasks.add_task(run_azure_terraform)
+    background_tasks.add_task(run_azure_terraform, {"log_id": tf_log_id})
     
     return {"message": "Cluster creation triggered successfully"}
 
@@ -138,8 +148,12 @@ async def delete_azure_cluster(cluster_name: str, background_tasks: BackgroundTa
     Example request: DELETE /delete-gke-cluster/cluster-1
     """
     azure_utils = AzureUtil(db=db)
+    tf_utils = TerraformUtils(db=db)
     await azure_utils.set_azure_env()
     azure_utils.delete_from_azure_tfvars(cluster_name=cluster_name)
-    background_tasks.add_task(run_azure_terraform)
+
+    tf_log_id = await tf_utils.get_log_id(provider="Azure")
+
+    background_tasks.add_task(run_azure_terraform, {"log_id": tf_log_id})
     
     return {"message": f"Cluster '{cluster_name}' deletion started"}

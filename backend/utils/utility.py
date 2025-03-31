@@ -1,5 +1,5 @@
 import os
-from backend.db.dao import GcpDao, AzureDao
+from backend.db.dao import GcpDao, AzureDao, TerraformLogDao
 import json
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.containerservice import ContainerServiceClient
@@ -9,12 +9,25 @@ import subprocess
 
 GCP_KEY_PATH = "/tmp/gcp_sa_key.json"  # Temporary storage for the key
 
+task_running = {}
 
-task_running=True
-def run_gke_terraform():
+class TerraformUtils():
+    def __init__(self, db):
+        self.db = db
+
+    async def get_log_id(self, provider):
+        tf_dao = TerraformLogDao(db=self.db)
+        tf_id = await tf_dao.create_log_file(provider=provider)
+        return tf_id
+    
+
+def run_gke_terraform(data: dict):
     """Runs Terraform in the background."""
     global task_running
-    with open("terraform_output.log", "w") as log_file:
+    tf_log_id = data.get("log_id")
+    task_running[tf_log_id] = True
+
+    with open(f"terraform_output_{tf_log_id}.log", "w") as log_file:
         terraform_dir = "./infra/gcp"
         process = subprocess.Popen(
             ["terraform", "apply", "-auto-approve"],
@@ -22,13 +35,17 @@ def run_gke_terraform():
             stdout=log_file, 
             stderr=log_file
         )
-        process.wait() 
-        task_running=False
+    process.wait() 
+    task_running[tf_log_id] = False
 
-def run_azure_terraform():
+def run_azure_terraform(data: dict):
     """Runs Terraform in the background."""
     global task_running
-    with open("terraform_output.log", "w") as log_file:
+    tf_log_id = data.get("log_id")
+    task_running[tf_log_id] = True
+
+
+    with open(f"terraform_output_{tf_log_id}.log", "w") as log_file:
         terraform_dir = "./infra/azure"
         process = subprocess.Popen(
             ["terraform", "apply", "-auto-approve"],
@@ -37,15 +54,20 @@ def run_azure_terraform():
             stderr=log_file
         )
     process.wait() 
-    task_running=False
+    task_running[tf_log_id] = False
 
 
-def log_streamer():
+
+def log_streamer(log_id):
     """Generator function to yield log file contents in real-time."""
-    file_path = "terraform_output.log"
+    file_path = f"terraform_output_{log_id}.log"
+    print(file_path)
     with open(file_path, "r") as file:
-        file.seek(0, 2)  # Move to the end of the file
-        while task_running:
+        for line in file:
+            yield line 
+
+
+        while task_running.get(log_id, False):
             line = file.readline()
             if not line:
                 time.sleep(1)  # Wait for new logs

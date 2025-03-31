@@ -1,5 +1,6 @@
 from backend.db.connection import Base
-from sqlalchemy import Column, Integer, String, DateTime, func
+from sqlalchemy import Column, Integer, String, DateTime, func, Boolean
+from uuid import uuid4
 
 class GCPKey(Base):
     __tablename__ = "gcp_keys"
@@ -24,4 +25,21 @@ class AzureKey(Base):
     client_secret = Column(String)
     tenant_id = Column(String)
     subscription_id = Column(String)
-    created_at = Column(DateTime, server_default=func.now()) 
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class TerraformLogFile(Base):
+    __tablename__ = "terraform_log_file"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    log_id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    created_at = Column(DateTime, server_default=func.now())
+    stream_status = Column(Boolean, default=False)
+    provider = Column(String)
+
+    @staticmethod
+    def get_next_id(session):
+        max_id = session.query(func.max(TerraformLogFile.id)).scalar()
+        return (max_id or 0) + 1
+
+
