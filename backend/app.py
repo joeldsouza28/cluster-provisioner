@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from backend.db.connection import register_startup_event, register_shutdown_event
 from backend.db.dependency import get_db_connection
 from backend.db.dao import GcpDao, AzureDao
-from backend.utils import GCPUtils, AzureUtil, TerraformUtils, log_streamer, run_azure_terraform, run_kubernetes_terraform
+from backend.utils import GCPUtils, AzureUtil, TerraformUtils, log_streamer, run_kubernetes_terraform
 app = FastAPI()
 register_startup_event(app=app)
 register_shutdown_event(app=app)
@@ -111,6 +111,10 @@ async def add_cluster(req: Request, background_tasks: BackgroundTasks, db=Depend
 
     return {"message": f"Cluster {data["name"]} creation started", "stream_url": f"/stream-logs/{tf_log_id}"}
 
+
+@app.get("/")
+def health_check(req: Request):
+    return {"Success": True}
 
 
 @app.delete("/delete-gke-cluster/{cluster_name}")
