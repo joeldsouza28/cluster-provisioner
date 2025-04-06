@@ -15,8 +15,9 @@ class GcpDao():
         query = select(GCPKey).order_by(desc(GCPKey.created_at))
         data = await self.db.execute(query)
 
-        data = data.scalar_one_or_none()
+        data = data.fetchone()
         if data:
+            data = data[0]
             data_dict = data.__dict__.copy()  # Copy to avoid modifying the original object
             data_dict.pop("_sa_instance_state", None) 
             data_dict.pop("created_at", None) 
@@ -33,8 +34,9 @@ class GcpDao():
         query = select(GCPRemoteBackendConfig).order_by(desc(GCPRemoteBackendConfig.created_at))
         data = await self.db.execute(query)
 
-        data = data.scalar_one_or_none()
+        data = data.fetchone()
         if data:
+            data = data[0]
             data_dict = data.__dict__.copy()  # Copy to avoid modifying the original object
             data_dict.pop("_sa_instance_state", None) 
             data_dict.pop("created_at", None) 
@@ -53,8 +55,9 @@ class AzureDao():
         query = select(AzureRemoteBackendConfig).order_by(desc(AzureRemoteBackendConfig.created_at))
         data = await self.db.execute(query)
 
-        data = data.scalar_one_or_none()
+        data = data.fetchone()
         if data:
+            data = data[0]
             data_dict = data.__dict__.copy()  # Copy to avoid modifying the original object
             data_dict.pop("_sa_instance_state", None) 
             data_dict.pop("created_at", None) 
@@ -65,8 +68,9 @@ class AzureDao():
         query = select(AzureKey).order_by(desc(AzureKey.created_at))
         data = await self.db.execute(query)
 
-        data = data.scalar_one_or_none()
+        data = data.fetchone()
         if data:
+            data = data[0]
             data_dict = data.__dict__.copy()  # Copy to avoid modifying the original object
             data_dict.pop("_sa_instance_state", None) 
             data_dict.pop("created_at", None) 
