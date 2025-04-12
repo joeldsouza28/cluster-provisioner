@@ -4,8 +4,12 @@ import json
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.containerservice import ContainerServiceClient
 from google.cloud import container_v1
+from google.cloud import compute_v1
 import time
 import subprocess
+from googleapiclient.discovery import build
+from google.auth import default
+
 
 GCP_KEY_PATH = "/tmp/gcp_sa_key.json"  # Temporary storage for the key
 
@@ -107,6 +111,61 @@ class GCPUtils():
         gcp_dao = GcpDao(db=self.db)
         await gcp_dao.add_gcp_remote_bucket(bucket_name=bucket_name)
 
+    def list_regions(project_id):
+        client = compute_v1.RegionsClient()
+        regions = client.list(project=project_id)
+        for region in regions:
+            print(region.name)
+
+    def list_zones(project_id):
+        client = compute_v1.ZonesClient()
+        zones = client.list(project=project_id)
+        for zone in zones:
+            print(zone.name)
+
+    async def get_gcp_regions(self):
+        client = compute_v1.RegionsClient()
+        gcp_dao = GcpDao(db=self.db)
+        gcp_keys = await gcp_dao.get_gcp_key()
+
+        regions = client.list(project=gcp_keys["project_id"])
+        regions_list = []
+        for region in regions:
+            regions_list.append(region.name)
+        return regions_list
+    
+    async def get_gcp_zones(self):
+        client = compute_v1.ZonesClient()
+        gcp_dao = GcpDao(db=self.db)
+        gcp_keys = await gcp_dao.get_gcp_key()
+
+        zones = client.list(project=gcp_keys["project_id"])
+        zones_list = []
+        for zone in zones:
+            zones_list.append(zone.name)
+        return zones_list
+    
+    async def get_gcp_machine_types(self, region):
+        gcp_dao = GcpDao(db=self.db)
+        gcp_keys = await gcp_dao.get_gcp_key()
+
+        machine_client = compute_v1.MachineTypesClient()
+        zone_list = compute_v1.ZonesClient()
+
+        zones = zone_list.list(project=gcp_keys["project_id"])
+        zone_names = [zone.name for zone in zones if zone.name.startswith(region)]
+        machine_types_set = set()
+        for zone in zone_names:
+            machine_types = machine_client.list(project=gcp_keys["project_id"], zone=zone)
+            for machine in machine_types:
+                machine_types_set.add(machine.name)
+                
+        return list(machine_types_set)
+        
+    async def get_gcp_keys(self):
+        gcp_dao = GcpDao(db=self.db)
+        gcp_keys = await gcp_dao.get_gcp_keys()
+        return gcp_keys
 
     async def set_gcp_env(self):
 
@@ -213,6 +272,11 @@ class AzureUtil():
         azure_dao = AzureDao(db=self.db)
         await azure_dao.add_azure_remote_bucket(data=data)
 
+    async def get_azure_keys(self):
+        azure_dao = AzureDao(db=self.db)
+        azure_keys = await azure_dao.get_gcp_keys()
+        return azure_keys
+
     
 
     async def set_azure_env(self):
@@ -309,7 +373,7 @@ class AzureUtil():
                 cluster_list.append({
                     "name": cluster.name,
                     "location": cluster.location,
-                    "provisioning_state": cluster.provisioning_state,
+                    "status": cluster.provisioning_state,
                     "cloud": "Azure"
                 })
 

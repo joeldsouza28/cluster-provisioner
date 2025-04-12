@@ -53,3 +53,6 @@ class GenericResponse(BaseModel):
     success: bool
     errors: List[ErrorDetail] = []
     data: Optional[T] = None
+
+class MachineType(BaseModel):
+    region: str

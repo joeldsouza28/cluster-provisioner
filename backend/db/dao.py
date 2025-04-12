@@ -26,6 +26,27 @@ class GcpDao():
 
             return data_dict
         
+    async def get_gcp_keys(self):
+        query = select(
+            GCPKey.id, 
+            GCPKey.project_id, 
+            GCPKey.client_id, 
+            GCPKey.client_email, 
+            GCPKey.type, 
+            GCPKey.created_at
+        ).order_by(desc(GCPKey.created_at))
+        data = await self.db.execute(query)
+
+        data = data.fetchall()
+        final_data = []
+        for i in data:
+            i = i._asdict()
+            i["created_at"] = i.get("created_at").strftime("%d-%m-%d %H:%M:%S")
+            final_data.append(i)
+
+        return final_data
+
+
     async def add_gcp_remote_bucket(self, bucket_name):
         gcp_remote_backend = GCPRemoteBackendConfig(bucket_name=bucket_name)
         self.db.add(gcp_remote_backend)
@@ -50,6 +71,25 @@ class AzureDao():
     async def add_azure_keys(self, data):
         gcp_data = AzureKey(**data)
         self.db.add(gcp_data)
+
+    async def get_gcp_keys(self):
+        query = select(
+            AzureKey.id, 
+            AzureKey.client_id, 
+            AzureKey.tenant_id, 
+            AzureKey.subscription_id, 
+            AzureKey.created_at
+        ).order_by(desc(AzureKey.created_at))
+        data = await self.db.execute(query)
+
+        data = data.fetchall()
+        final_data = []
+        for i in data:
+            i = i._asdict()
+            i["created_at"] = i.get("created_at").strftime("%d-%m-%d %H:%M:%S")
+            final_data.append(i)
+
+        return final_data
 
     async def get_azure_remote_bucket(self):
         query = select(AzureRemoteBackendConfig).order_by(desc(AzureRemoteBackendConfig.created_at))

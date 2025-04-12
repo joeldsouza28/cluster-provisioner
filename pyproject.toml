@@ -28,6 +28,7 @@ dependencies = [
     "importlib (>=1.0.4,<2.0.0)",
     "loguru (>=0.7.3,<0.8.0)",
     "ujson (>=5.10.0,<6.0.0)",
+    "google-api-python-client (>=2.166.0,<3.0.0)",
 ]
 
 

@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from backend.utils import GCPUtils, AzureUtil, run_kubernetes_terraform, log_streamer, TerraformUtils
 from backend.db.dependency import get_db_connection
 from backend.db.dao import GcpDao, AzureDao
-from backend.schema import GCPKeys, AzureKeys, GCPRemoteBackend, AzureRemoteBackend, AzureClusterDetails, GCPClusterDetails
+from backend.schema import GCPKeys, AzureKeys, GCPRemoteBackend, AzureRemoteBackend, AzureClusterDetails, GCPClusterDetails, MachineType
 
 api_router = APIRouter()
 
@@ -36,7 +36,54 @@ async def get_gke_clusters(db=Depends(get_db_connection)):
     return {
         "clusters": gke_clusters + azure_clusters
     }
+
+@api_router.get("/get-gcp-regions")
+async def get_gcp_regions(db=Depends(get_db_connection)):
+    gcp_utils = GCPUtils(db=db)
+    await gcp_utils.set_gcp_env()
+    regions = await gcp_utils.get_gcp_regions()
+    return {
+        "regions": regions
+    }
+
+@api_router.get("/get-gcp-zones")
+async def get_gcp_zones(db=Depends(get_db_connection)):
+    gcp_utils = GCPUtils(db=db)
+    await gcp_utils.set_gcp_env()
+    zones = await gcp_utils.get_gcp_zones()
+    return {
+        "zones": zones
+    }
+
+@api_router.get("/get-gcp-machine-types")
+async def get_gcp_machine_types(machine_type: MachineType, db=Depends(get_db_connection)):
+    gcp_utils = GCPUtils(db=db)
+    await gcp_utils.set_gcp_env()
+    print(machine_type)
+    machine_types = await gcp_utils.get_gcp_machine_types(region=machine_type.region)
+    return {
+        "machine_types": machine_types
+    }
+
+
+@api_router.get("/list-gcp-keys")
+async def get_gcp_keys(db=Depends(get_db_connection)):
+    gcp_utils = GCPUtils(db=db)
+    data = await gcp_utils.get_gcp_keys()
+    return {
+        "gcp_keys": data
+    }
+
+
+@api_router.get("/list-azure-keys")
+async def get_azure_keys(db=Depends(get_db_connection)):
+    azure_utils = AzureUtil(db=db)
+    data = await azure_utils.get_azure_keys()
+    return {
+        "azure_keys": data
+    }
     
+
 @api_router.post("/add-gcp-remote-backend")
 async def add_gcp_remote_backend(gcp_remote_backend: GCPRemoteBackend, db=Depends(get_db_connection)):
     gcp_dao = GcpDao(db=db)

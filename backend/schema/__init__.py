@@ -1,1 +1,1 @@
-from .schema import GCPKeys, AzureKeys, GCPRemoteBackend, AzureRemoteBackend, AzureClusterDetails, GCPClusterDetails
+from .schema import GCPKeys, AzureKeys, GCPRemoteBackend, AzureRemoteBackend, AzureClusterDetails, GCPClusterDetails, MachineType
