@@ -1,6 +1,10 @@
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from typing import Awaitable, Callable
+from fastapi import FastAPI
+
+
 
 DATABASE_URL = os.environ.get("DB_URL")
 
@@ -21,11 +25,6 @@ AsyncSessionLocal = sessionmaker(
 # This Base is needed for Alembic
 Base = declarative_base()
 
-
-from typing import Awaitable, Callable
-
-from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 

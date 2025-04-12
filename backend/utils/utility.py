@@ -81,18 +81,22 @@ def log_streamer(log_id):
         for line in final_lines:
             yield line
 
-
+def is_terraform_initialized(path="."):
+    return os.path.isdir(os.path.join(path, ".terraform"))
 
 def configure_backend(backend_config, infra):
-    config_file = f"./infra/{infra}/backend.config"
-    with open(config_file, "w") as f:
-        f.write(backend_config)
+    
 
-    process = subprocess.Popen(
-        ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
-        cwd=f"./infra/{infra}",
-    )
-    process.wait()
+    config_file = f"./infra/{infra}/backend.config"
+    if not is_terraform_initialized(path=f"./infra/{infra}"):
+        with open(config_file, "w") as f:
+            f.write(backend_config)
+
+        process = subprocess.Popen(
+            ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
+            cwd=f"./infra/{infra}",
+        )
+        process.wait()
 
 
 class GCPUtils():
