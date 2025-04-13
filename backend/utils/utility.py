@@ -3,13 +3,15 @@ from backend.db.dao import GcpDao, AzureDao, TerraformLogDao
 import json
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.containerservice import ContainerServiceClient
+from azure.mgmt.compute import ComputeManagementClient
 from google.cloud import container_v1
 from google.cloud import compute_v1
 import time
 import subprocess
 from googleapiclient.discovery import build
+from azure.mgmt.resource import SubscriptionClient
 from google.auth import default
-
+import requests
 
 GCP_KEY_PATH = "/tmp/gcp_sa_key.json"  # Temporary storage for the key
 
@@ -23,6 +25,16 @@ class TerraformUtils():
         tf_dao = TerraformLogDao(db=self.db)
         tf_id = await tf_dao.create_log_file(provider=provider)
         return tf_id
+    
+    async def get_active_log_ids(self):
+        tf_dao = TerraformLogDao(db=self.db)
+        tf_data = await tf_dao.get_active_log_ids()
+        return tf_data
+    
+
+    async def update_active_log_id(self, id):
+        tf_dao = TerraformLogDao(db=self.db)
+        await tf_dao.update_log_file(log_id=id, stream_status=True)
     
 
 def run_kubernetes_terraform(data: dict):
@@ -65,7 +77,6 @@ def run_azure_terraform(data: dict):
 def log_streamer(log_id):
     """Generator function to yield log file contents in real-time."""
     file_path = f"terraform_output_{log_id}.log"
-    print(file_path)
     with open(file_path, "r") as file:
         for line in file:
             yield line 
@@ -111,18 +122,7 @@ class GCPUtils():
         gcp_dao = GcpDao(db=self.db)
         await gcp_dao.add_gcp_remote_bucket(bucket_name=bucket_name)
 
-    def list_regions(project_id):
-        client = compute_v1.RegionsClient()
-        regions = client.list(project=project_id)
-        for region in regions:
-            print(region.name)
-
-    def list_zones(project_id):
-        client = compute_v1.ZonesClient()
-        zones = client.list(project=project_id)
-        for zone in zones:
-            print(zone.name)
-
+    
     async def get_gcp_regions(self):
         client = compute_v1.RegionsClient()
         gcp_dao = GcpDao(db=self.db)
@@ -160,7 +160,7 @@ class GCPUtils():
             for machine in machine_types:
                 machine_types_set.add(machine.name)
                 
-        return list(machine_types_set)
+        return sorted(list(machine_types_set))
         
     async def get_gcp_keys(self):
         gcp_dao = GcpDao(db=self.db)
@@ -257,7 +257,6 @@ class GCPUtils():
             return all_clusters 
         
         except Exception as e:
-            print(e)
             return []
 
 
@@ -278,6 +277,48 @@ class AzureUtil():
         return azure_keys
 
     
+    async def get_azure_regions(self):
+        credential = DefaultAzureCredential()
+        SUBSCRIPTION_ID = os.environ.get("TF_VAR_subscription_id")
+
+        url = f"https://management.azure.com/subscriptions/{SUBSCRIPTION_ID}/locations?api-version=2016-06-01"
+
+        token = credential.get_token("https://management.azure.com/.default").token
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+
+        response = requests.get(url, headers=headers)
+        regions = []
+        if response.status_code == 200:
+            data = response.json()
+            for region in data["value"]:
+                regions.append(region['name'])
+
+        return regions
+
+    async def get_azure_machine_type(self, region):
+        credential = DefaultAzureCredential()
+        SUBSCRIPTION_ID = os.environ.get("TF_VAR_subscription_id")
+
+        token = credential.get_token("https://management.azure.com/.default").token
+
+
+        url = f"https://management.azure.com/subscriptions/{SUBSCRIPTION_ID}/providers/Microsoft.Compute/locations/{region}/vmSizes?api-version=2024-07-01"
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        response = requests.get(url, headers=headers)
+        machine_types = []
+        if response.status_code == 200:
+            data = response.json()
+            for size in data["value"]:
+                machine_types.append(size['name'])
+        
+        return machine_types
 
     async def set_azure_env(self):
         azure_dao = AzureDao(db=self.db)
@@ -308,6 +349,7 @@ class AzureUtil():
 
         configure_backend(backend_config=backend_config, infra="azure")
 
+
     
 
     def update_azure_tfvars(self, cluster_data):
@@ -334,7 +376,6 @@ class AzureUtil():
 
             return True
         except Exception as e:
-            print(f"Error updating tfvars: {e}")
             return False
         
     def delete_from_azure_tfvars(self, cluster_name):

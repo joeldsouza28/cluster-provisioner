@@ -8,3 +8,4 @@ __pycache__
 *.terraform.tfstate.lock.info
 azure_keys.json
 backend.config
+node_modules/

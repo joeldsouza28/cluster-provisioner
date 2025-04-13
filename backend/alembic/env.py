@@ -83,7 +83,6 @@ loop = asyncio.get_event_loop()
 if context.is_offline_mode():
     task = run_migrations_offline()
 else:
-    print("here")
     task = run_migrations_online()
 
 

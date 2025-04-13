@@ -136,9 +136,25 @@ class TerraformLogDao():
         max_id = data.scalar()
         return (max_id or 0) + 1
 
+    async def get_active_log_ids(self):
+        query = (
+            select(
+                TerraformLogFile.log_id, 
+                TerraformLogFile.provider, 
+                TerraformLogFile.stream_status)
+            .where(TerraformLogFile.stream_status == False)
+        )
+        data = await self.db.execute(query)
+        data = data.fetchall()
+        data_final = []
+        for i in data:
+            i = i._asdict()
+            data_final.append(i)
+
+        return data_final
 
     async def update_log_file(self, log_id, stream_status):
-        query = update(TerraformLogFile.stream_status).where(TerraformLogFile.log_id==log_id).values(stream_status=stream_status)
+        query = update(TerraformLogFile).where(TerraformLogFile.log_id==log_id).values(stream_status=stream_status)
         await self.db.execute(query)
         await self.db.commit()
         await self.db.close()
