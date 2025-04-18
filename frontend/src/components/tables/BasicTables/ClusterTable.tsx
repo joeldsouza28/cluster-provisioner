@@ -15,7 +15,7 @@ export interface ClusterData {
     cloud: string;
 }
 
-export default function ClusterTable({tableData, onDelete}) {
+export default function ClusterTable({tableData, onDelete, disabledRows}) {
     
     
 
@@ -59,7 +59,10 @@ export default function ClusterTable({tableData, onDelete}) {
                 </TableHeader>
                 {/* Table Body */}
                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {tableData.map((cluster_data: ClusterData, i: number) => (
+                {tableData.map((cluster_data: ClusterData, i: number) => {
+                    let isDisabled = disabledRows.includes(i);
+                    console.log(disabledRows)
+                    return (
                     <TableRow key={cluster_data.name}>
                         <TableCell className="px-5 py-4 sm:px-6 text-start">
                         <div className="flex items-center gap-3">
@@ -82,12 +85,13 @@ export default function ClusterTable({tableData, onDelete}) {
                         </div>
                         </TableCell>
                         <TableCell className="px-5 py-4 sm:px-6 text-start">
-                            <Button className="bg-red-500 hover:bg-red-800" onClick={()=>onDelete(i)}>
+                            <Button className="bg-red-500 hover:bg-red-800" onClick={()=>onDelete(i)} disabled={isDisabled}>
                                 Delete
                             </Button>
                         </TableCell>
                     </TableRow>
-                    ))
+                    )
+                })
                 }
                 </TableBody>
                 </Table>

@@ -6,12 +6,10 @@ import Button from "../../components/ui/button/Button";
 import { Modal } from "../../components/ui/modal";
 import {LogStream} from "../../components/stream";
 import LogList from "../../components/loglist";
+import { getRegions, getMachineTypes, Item, getRunningLogTasks, RunningTask, addCluster} from "../../services";
 
 export default function AddCluster(){
-    type Item = {
-        value: number;
-        label: string;
-    };
+    
 
     let cloud_options = [
         {value: "gcp", label: "GCP"},
@@ -19,8 +17,8 @@ export default function AddCluster(){
     ]
 
     let [cloud, setCloud] = useState("")
-    let [regions, setRegion] = useState<Item[]>([])
-    let [machineTypes, setMachineTypes] = useState<Item[]>([])
+    let [regions, setRegion] = useState<Item[]>([]);
+    let [machineTypes, setMachineTypes] = useState<Item[]>([]);
     let [errorText, setErrorText] = useState("")
     let [nodeCountErrorText, setNodeCountErrorText] = useState("")
     let [nodeCountError, setNodeCountError] = useState(false)
@@ -29,7 +27,7 @@ export default function AddCluster(){
 
     let [streamUrl, setStreamUrl] = useState("")
     let [logStreamModal, setLogStreamModal] = useState(false)
-    let [runningTasks, setRunningTasks] = useState([])
+    let [runningTasks, setRunningTasks] = useState<RunningTask[]>([]);
 
 
     let [clusterName, setClusterName] = useState("")
@@ -49,112 +47,24 @@ export default function AddCluster(){
 
     let [error, setError] = useState(false)
 
-    const getRunningTasks = ()=>{
-        fetch("http://localhost:8000/api/get-running-tasks")
-        .then(resp=>resp.json())
-        .then((data)=>{
-            data = data["logs_streams"]
-            let log_stream_final = []
-            for(let i = 0; i < data.length; i++){
-                console.log(data)
-                log_stream_final.push({
-                    "log_id": data["log_id"],
-                    "cloud": data["provider"],
-                    "stream_status": data["stream_status"],
-                    "stream_url": `http://localhost:8000${data[i]["stream_url"]}`
-                })
-            }
-            console.log(log_stream_final)
-            setRunningTasks(data);
-
-        })
+    const getRunningTasks = async()=>{
+        let data = await getRunningLogTasks();
+        setRunningTasks(data);
     }
 
-    const getGcpRegions = ()=>{
-        fetch(`http://localhost:8000/api/get-gcp-regions`).then(resp=>{
-            resp.json().then(data=>{
-                let regions = data["regions"];
-                let regionFormatted = []
-                for(let i = 0; i < regions.length; i++){
-                    regionFormatted.push({
-                        value: regions[i],
-                        label: regions[i],
-                    })
-                }
-                setRegion(regionFormatted);
-            })
-        })
-    }
-
-    const getAzureRegions = ()=>{
-        fetch(`http://localhost:8000/api/get-azure-regions`).then(resp=>{
-            resp.json().then(data=>{
-                let regions = data["regions"];
-                let regionFormatted = []
-                for(let i = 0; i < regions.length; i++){
-                    regionFormatted.push({
-                        value: regions[i],
-                        label: regions[i],
-                    })
-                }
-                setRegion(regionFormatted);
-            })
-        })
-    }
-
-    const getGcpMachineTypes = (region: string)=>{
-        fetch(`http://localhost:8000/api/get-gcp-machine-types?region=${region}`).then(resp=>{
-            resp.json().then(data=>{
-                let machine_types = data["machine_types"];
-                let machineTypesFormatted = []
-                for(let i = 0; i < machine_types.length; i++){
-                    machineTypesFormatted.push({
-                        value: machine_types[i],
-                        label: machine_types[i],
-                    })
-                }
-                setMachineTypes(machineTypesFormatted);
-            })
-        });
-    }
-
-    const getAzureMachineTypes = (region: string)=>{
-        fetch(`http://localhost:8000/api/get-azure-machine-types?region=${region}`).then(resp=>{
-            resp.json().then(data=>{
-                let machine_types = data["machine_types"];
-                let machineTypesFormatted = []
-                for(let i = 0; i < machine_types.length; i++){
-                    machineTypesFormatted.push({
-                        value: machine_types[i],
-                        label: machine_types[i],
-                    })
-                }
-                setMachineTypes(machineTypesFormatted);
-            })
-        });
-    }
-
-    const handleCloudChange = (value: string) => {
+    
+    const handleCloudChange = async(value: string) => {
         setCloud(value);
         setRegion([]);
         setMachineTypes([]);
-        if(value == "gcp"){
-            getGcpRegions();
-        }else if(value == "azure"){
-            getAzureRegions();
-        }
+        let regions = await getRegions(value);
+        setRegion(regions)
     };
 
-    const handleRegionChange=(value: string) =>{
+    const handleRegionChange=async(value: string) =>{
         setLocation(value);
-
-        if(cloud == "gcp"){
-            getGcpMachineTypes(value);
-        }
-        else if(cloud == "azure"){
-
-            getAzureMachineTypes(value)
-        }
+        let machineTypes = await getMachineTypes(cloud, value);
+        setMachineTypes(machineTypes)
     }
 
     const handleMachineTypeChange=(value: string) =>{
@@ -215,61 +125,12 @@ export default function AddCluster(){
 
     const openLogStreamModal = (i: number)=>{
         setLogStreamModal(true);
-        setStreamUrl(`http://localhost:8000${runningTasks[i]["stream_url"]}`);
+        setStreamUrl(`${runningTasks[i]["stream_url"]}`);
         setIsModalOpen(false);
 
     }
     const closeLogStreamModal = ()=>{
         setLogStreamModal(false)
-    }
-
-
-    const createGCPCluster = ()=>{
-        fetch("http://localhost:8000/api/add-gke-cluster/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                name: clusterName,
-                location: location,
-                node_count: nodeCount,
-                machine_type: machineType,
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            setStreamUrl(`http://localhost:8000${data["stream_url"]}`);
-            console.log("Success:", data);
-        })
-        .catch(error => {
-            console.error("Error:", error);
-        });
-    }
-
-    const createAzureCluster = ()=>{
-        fetch("http://localhost:8000/api/add-azure-cluster/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                name: clusterName,
-                location: location,
-                node_count: nodeCount,
-                vm_size: machineType,
-                resource_group_name: resourceGroupName,
-                dns_prefix: dnsPrefix
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            setStreamUrl(`http://localhost:8000${data["stream_url"]}`);
-            console.log("Success:", data);
-        })
-        .catch(error => {
-            console.error("Error:", error);
-        });
     }
 
     const openModal = ()=>{
@@ -281,15 +142,30 @@ export default function AddCluster(){
         setIsModalOpen(false);
     }
 
-    const createCluster = ()=>{
+    const createCluster = async()=>{
         openModal();
         setEnableModal(true);
-       if(cloud === "gcp"){
-            createGCPCluster();
-       }
-       else if(cloud === "azure"){
-            createAzureCluster();
-       }
+        let data = {}
+        if(cloud === "gcp"){
+            data = {
+                name: clusterName,
+                location: location,
+                node_count: nodeCount,
+                machine_type: machineType,
+            }
+        }
+        else if(cloud === "azure"){
+            data = {
+                name: clusterName,
+                location: location,
+                node_count: nodeCount,
+                vm_size: machineType,
+                resource_group_name: resourceGroupName,
+                dns_prefix: dnsPrefix
+            }
+        }
+        let response_data = await addCluster(data, cloud)
+        setStreamUrl(`http://localhost:8000${response_data["stream_url"]}`);
     }
 
     useEffect(()=>{

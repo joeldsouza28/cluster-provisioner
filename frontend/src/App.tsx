@@ -19,12 +19,9 @@ import GCPKeys from "./pages/GCPKeys/GCPKeys";
 import AzureKeys from "./pages/AzureKeys/AzureKeys";
 import ClusterList from "./pages/ClusterList/ClusterList";
 import AddCluster from "./pages/AddCluster/AddCluster";
-
-
-
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
-import Home from "./pages/Dashboard/Home";
+import KeysPage from "./pages/KeysTables/Keys";
 
 export default function App() {
   return (
@@ -36,8 +33,8 @@ export default function App() {
           <Route element={<AppLayout />}>
             {/* <Route index path="/" element={<Home />} /> */}
             <Route index path="/" element={<ClusterList />} />
-            <Route index path="/gcp-keys" element={<GCPKeys />} />
-            <Route index path="/azure-keys" element={<AzureKeys />} />
+            <Route index path="/keys/:provider" element={<KeysPage />} />
+            <Route index path="/keys/:provider" element={<KeysPage />} />
             <Route index path="/add-cluster" element={<AddCluster />} />
 
 

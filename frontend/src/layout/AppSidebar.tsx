@@ -34,12 +34,12 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "GCP Configuration",
-    path: "/gcp-keys"
+    path: "/keys/gcp"
   },
   {
     icon: <GridIcon />,
     name: "Azure Configuration",
-    path: "/azure-keys"
+    path: "/keys/azure"
   },
   
   // {
@@ -57,11 +57,6 @@ const navItems: NavItem[] = [
   //   icon: <ListIcon />,
   //   subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
   // },
-  {
-    name: "Tables",
-    icon: <TableIcon />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-  },
   // {
   //   name: "Pages",
   //   icon: <PageIcon />,

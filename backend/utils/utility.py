@@ -12,6 +12,10 @@ from googleapiclient.discovery import build
 from azure.mgmt.resource import SubscriptionClient
 from google.auth import default
 import requests
+from google.cloud import storage
+import os
+from fastapi import HTTPException
+from fastapi import status
 
 GCP_KEY_PATH = "/tmp/gcp_sa_key.json"  # Temporary storage for the key
 
@@ -21,9 +25,9 @@ class TerraformUtils():
     def __init__(self, db):
         self.db = db
 
-    async def get_log_id(self, provider):
+    async def get_log_id(self, provider, action, cluster_name, location):
         tf_dao = TerraformLogDao(db=self.db)
-        tf_id = await tf_dao.create_log_file(provider=provider)
+        tf_id = await tf_dao.create_log_file(provider=provider, action=action, cluster_name=cluster_name, location=location)
         return tf_id
     
     async def get_active_log_ids(self):
@@ -103,15 +107,15 @@ def configure_backend(backend_config, infra):
     
 
     config_file = f"./infra/{infra}/backend.config"
-    if not is_terraform_initialized(path=f"./infra/{infra}"):
-        with open(config_file, "w") as f:
-            f.write(backend_config)
+    
+    with open(config_file, "w") as f:
+        f.write(backend_config)
 
-        process = subprocess.Popen(
-            ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
-            cwd=f"./infra/{infra}",
-        )
-        process.wait()
+    process = subprocess.Popen(
+        ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
+        cwd=f"./infra/{infra}",
+    )
+    process.wait()
 
 
 class GCPUtils():
@@ -121,8 +125,17 @@ class GCPUtils():
     async def set_gcp_remote_backend(self, bucket_name):
         gcp_dao = GcpDao(db=self.db)
         await gcp_dao.add_gcp_remote_bucket(bucket_name=bucket_name)
+        
 
     
+    async def create_gcp_bucket(self, bucket_name, location):
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        try:
+            new_bucket = client.create_bucket(bucket, location=location)
+        except Exception as ex:
+            raise HTTPException(detail="The request bucket name is not available", status_code=status.HTTP_400_BAD_REQUEST)
+
     async def get_gcp_regions(self):
         client = compute_v1.RegionsClient()
         gcp_dao = GcpDao(db=self.db)
@@ -161,30 +174,41 @@ class GCPUtils():
                 machine_types_set.add(machine.name)
                 
         return sorted(list(machine_types_set))
+    
+    async def get_remote_bucket(self, project_id):
+        gcp_dao = GcpDao(db=self.db)
+        bucket_data = await gcp_dao.get_gcp_remote_bucket(key_id=project_id)
+        return bucket_data
+
         
     async def get_gcp_keys(self):
         gcp_dao = GcpDao(db=self.db)
         gcp_keys = await gcp_dao.get_gcp_keys()
         return gcp_keys
+    
+    async def initialize_backend(self, bucket_name):
+        backend_config = f"""bucket  = "{bucket_name}"
+        prefix  = "terraform/state"
+        """
 
-    async def set_gcp_env(self):
+        configure_backend(backend_config=backend_config, infra="gcp")
+
+    async def set_gcp_env(self, id=None):
 
         gcp_dao = GcpDao(db=self.db)
-        gcp_keys = await gcp_dao.get_gcp_key()
-        gcp_bucket_data = await gcp_dao.get_gcp_remote_bucket()
+        if id:
+            gcp_keys = await gcp_dao.get_gcp_key_by_id(project_id=id)
+        else:
+            gcp_keys = await gcp_dao.get_gcp_key()
+
         with open(GCP_KEY_PATH, "w", encoding="utf-8") as file:
             gcp_keys["token_uri"] = "https://oauth2.googleapis.com/token"
+            gcp_keys["private_key"] = gcp_keys["private_key"].replace("\\n", "\n")
             json.dump(gcp_keys, file, ensure_ascii=False, indent=4)
         
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
         os.environ["TF_VAR_project_id"] = gcp_keys["project_id"]
         
-        backend_config = f"""bucket  = "{gcp_bucket_data.bucket_name}"
-        prefix  = "terraform/state"
-        """
-
-        configure_backend(backend_config=backend_config, infra="gcp")
-        # os.environ["TF_VAR_bucket_name"] = gcp_bucket_data.bucket_name
 
     def update_gcp_tfvars(self, cluster_data):
         TERRAFORM_DIR = "./infra/gcp"

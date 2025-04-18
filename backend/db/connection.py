@@ -26,6 +26,8 @@ AsyncSessionLocal = sessionmaker(
 Base = declarative_base()
 
 
+# def initialize_gcp_backend():
+
 
 
 def _setup_db(app: FastAPI) -> None:  # pragma: no cover

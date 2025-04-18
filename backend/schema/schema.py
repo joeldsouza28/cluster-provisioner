@@ -11,6 +11,9 @@ class GCPKeys(BaseModel):
     project_id: str
     type: str
 
+class ActiveKey(BaseModel):
+    id: int
+
 
 class AzureKeys(BaseModel):
     client_id: str
@@ -21,6 +24,8 @@ class AzureKeys(BaseModel):
 
 class GCPRemoteBackend(BaseModel):
     bucket_name: str
+    project_id: str
+    location: str
 
 class AzureRemoteBackend(BaseModel):
     resource_group_name: str
