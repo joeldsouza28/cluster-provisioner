@@ -2,8 +2,11 @@ from fastapi.routing import APIRouter
 from fastapi import Depends, BackgroundTasks
 from backend.utils import AzureUtil, TerraformUtils, run_kubernetes_terraform
 from backend.db.dao import AzureDao
-from backend.schema import AzureKeys, AzureRemoteBackend, AzureClusterDetails
+from backend.schema import AzureKeys, AzureRemoteBackend, AzureClusterDetails, ActiveKey
 from backend.db.dependency import get_db_connection
+from fastapi import status, HTTPException
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
 
 api_router = APIRouter()
 
@@ -34,6 +37,16 @@ async def get_azure_keys(db=Depends(get_db_connection)):
     return {
         "keys": data
     }
+
+
+@api_router.get("/get-remote-backend")
+async def get_azure_remote_backend(db=Depends(get_db_connection)):
+    azure_dao = AzureDao(db=db)
+    remote_buckets = await azure_dao.get_azure_remote_buckets()
+    return {
+        "remote_backends": remote_buckets
+    }
+
     
 
 
@@ -41,10 +54,41 @@ async def get_azure_keys(db=Depends(get_db_connection)):
 @api_router.post("/add-remote-backend")
 async def add_azure_remote_backend(azure_remote_backend: AzureRemoteBackend, db=Depends(get_db_connection)):
     azure_dao = AzureDao(db=db)
+    azure_utils = AzureUtil(db=db)
+    await azure_utils.set_azure_env()
+    await azure_utils.create_azure_container(
+        resource_group=azure_remote_backend.resource_group_name,
+        location=azure_remote_backend.location,
+        storage_account=azure_remote_backend.storage_account_name,
+        container_name=azure_remote_backend.container_name
+    )
     await azure_dao.add_azure_remote_bucket(azure_remote_backend.model_dump())
+    
     return {
         "detail": "Added remote backend for azure"
     }
+
+
+@api_router.post("/set-active")
+async def set_active(active_key: ActiveKey, db=Depends(get_db_connection)):
+    azure_dao = AzureDao(db=db)
+    azure_utils = AzureUtil(db=db)
+
+    from backend.utils import task_running
+    log_values = list(task_running.values())
+    if True in log_values:
+        raise HTTPException(detail="Cannot set active now as you have certain terraform task running", status_code=status.HTTP_400_BAD_REQUEST)
+
+    await azure_dao.set_active_azure_active_key(id=active_key.id, active=True)
+    azure_keys = await azure_dao.get_azure_key()
+    await azure_utils.set_azure_env(key_id=azure_keys["subscription_id"])
+    azure_bucket_data = await azure_dao.get_azure_remote_bucket(key_id=azure_keys["subscription_id"])
+    await azure_utils.initialize_backend(azure_bucket_data=azure_bucket_data)
+
+    return {
+        "message": "Key successfully activated"
+    }
+
 
 @api_router.post("/add-keys")
 async def add_azure_key(azure_keys: AzureKeys, db=Depends(get_db_connection)):
@@ -58,6 +102,17 @@ async def add_azure_key(azure_keys: AzureKeys, db=Depends(get_db_connection)):
     }
 
 
+@api_router.delete("/delete-keys/{id}")
+async def delete_gcp_key(id: int, db=Depends(get_db_connection)):
+
+    azure_dao = AzureDao(db=db)
+
+    await azure_dao.delete_gcp_keys(id=id)
+
+    return {
+        "message": "Key successfully removed"
+    }
+
 
 @api_router.post("/add-cluster")
 async def add_azure_cluster(azure_cluster_details: AzureClusterDetails, background_tasks: BackgroundTasks, db=Depends(get_db_connection)):
@@ -65,9 +120,14 @@ async def add_azure_cluster(azure_cluster_details: AzureClusterDetails, backgrou
     API to add a new AKS cluster and trigger Terraform.
     """
     azure_util = AzureUtil(db=db)
+    azure_dao = AzureDao(db=db)
     tf_utils = TerraformUtils(db=db)
     await azure_util.set_azure_env()
     
+    azure_keys = await azure_dao.get_azure_key()
+    azure_bucket = await azure_dao.get_azure_remote_bucket(key_id=azure_keys["subscription_id"])
+    await azure_util.initialize_backend(azure_bucket_data=azure_bucket)
+
     # data = await req.json()
     azure_util.update_azure_tfvars(cluster_data=azure_cluster_details.model_dump())
 

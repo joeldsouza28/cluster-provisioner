@@ -3,12 +3,15 @@ from backend.db.dao import GcpDao, AzureDao, TerraformLogDao
 import json
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.containerservice import ContainerServiceClient
-from azure.mgmt.compute import ComputeManagementClient
 from google.cloud import container_v1
 from google.cloud import compute_v1
 import time
 import subprocess
 from googleapiclient.discovery import build
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.resource import ResourceManagementClient
+from azure.mgmt.storage import StorageManagementClient
+from azure.storage.blob import BlobServiceClient
 from azure.mgmt.resource import SubscriptionClient
 from google.auth import default
 import requests
@@ -16,6 +19,7 @@ from google.cloud import storage
 import os
 from fastapi import HTTPException
 from fastapi import status
+import shutil
 
 GCP_KEY_PATH = "/tmp/gcp_sa_key.json"  # Temporary storage for the key
 
@@ -103,16 +107,14 @@ def log_streamer(log_id):
 def is_terraform_initialized(path="."):
     return os.path.isdir(os.path.join(path, ".terraform"))
 
-def configure_backend(backend_config, infra):
+def configure_backend(backend_config, infra, bucket_name):
     
-
-    config_file = f"./infra/{infra}/backend.config"
-    
+    config_file = f"./infra/{infra}/backend-{bucket_name}.config"
     with open(config_file, "w") as f:
         f.write(backend_config)
 
     process = subprocess.Popen(
-        ["terraform", "init", "-backend-config=backend.config", "-migrate-state"],
+        ["terraform", "init", f"-backend-config=backend-{bucket_name}.config", "-reconfigure"],
         cwd=f"./infra/{infra}",
     )
     process.wait()
@@ -191,7 +193,7 @@ class GCPUtils():
         prefix  = "terraform/state"
         """
 
-        configure_backend(backend_config=backend_config, infra="gcp")
+        configure_backend(backend_config=backend_config, infra="gcp", bucket_name=bucket_name)
 
     async def set_gcp_env(self, id=None):
 
@@ -261,6 +263,15 @@ class GCPUtils():
     def list_gke_clusters(self):
         """Lists GKE clusters in a given project and region."""
         # parent = f"projects/{project_id}/locations/{region}"
+        gke_cluster_status = {
+            0: "Status Unspecified",
+            1: "Provisioning",
+            2: "Running",
+            3: "Reconciling",
+            4: "Stopping",
+            5: "Error",
+            6: "Degraded"
+        }
 
 
         # container_v1
@@ -275,7 +286,7 @@ class GCPUtils():
                 all_clusters.append({
                     "name": cluster.name,
                     "location": cluster.location,
-                    "status": cluster.status,
+                    "status": gke_cluster_status[cluster.status],
                     "cloud": "GCP"
                 })
             return all_clusters 
@@ -297,7 +308,7 @@ class AzureUtil():
 
     async def get_azure_keys(self):
         azure_dao = AzureDao(db=self.db)
-        azure_keys = await azure_dao.get_gcp_keys()
+        azure_keys = await azure_dao.get_azure_keys()
         return azure_keys
 
     
@@ -344,9 +355,13 @@ class AzureUtil():
         
         return machine_types
 
-    async def set_azure_env(self):
+    async def set_azure_env(self, key_id=None):
         azure_dao = AzureDao(db=self.db)
-        azure_key = await azure_dao.get_azure_key()
+        if key_id is not None:
+            azure_key = await azure_dao.get_azure_key_by_id(key_id=key_id)
+        else:
+            azure_key = await azure_dao.get_azure_key()
+        print(azure_key)
         os.environ["TF_VAR_client_id"] = azure_key["client_id"]
         os.environ["TF_VAR_client_secret"] = azure_key["client_secret"]
         os.environ["TF_VAR_tenant_id"] = azure_key["tenant_id"]
@@ -360,18 +375,18 @@ class AzureUtil():
         os.environ["ARM_TENANT_ID"] = azure_key["tenant_id"]
         os.environ["TF_VAR_subscription_id"] = azure_key["subscription_id"]
 
-        azure_bucket_data = await azure_dao.get_azure_remote_bucket()
+        # azure_bucket_data = await azure_dao.get_azure_remote_bucket()
 
-        backend_config = f"""
-        resource_group_name  = "{azure_bucket_data.resource_group_name}"
-        storage_account_name  = "{azure_bucket_data.storage_account_name}"
-        container_name = "{azure_bucket_data.container_name}"
-        key = "{azure_bucket_data.key}"
-        """
+        # backend_config = f"""
+        # resource_group_name  = "{azure_bucket_data.resource_group_name}"
+        # storage_account_name  = "{azure_bucket_data.storage_account_name}"
+        # container_name = "{azure_bucket_data.container_name}"
+        # key = "{azure_bucket_data.key}"
+        # """
 
         # backend_config = "./infra/azure/backend.config"
 
-        configure_backend(backend_config=backend_config, infra="azure")
+        # configure_backend(backend_config=backend_config, infra="azure")
 
 
     
@@ -445,6 +460,53 @@ class AzureUtil():
             return cluster_list
         except Exception as ex:
             return []
+
+    async def create_azure_container(self, resource_group, location, storage_account, container_name):
+        try:
+
+            subscription_id = os.environ.get("ARM_SUBSCRIPTION_ID")
+
+            credential = DefaultAzureCredential()
+            
+            resource_client = ResourceManagementClient(credential, subscription_id)
+            resource_client.resource_groups.create_or_update(resource_group, {"location": location})
+
+            storage_client = StorageManagementClient(credential, subscription_id)
+            storage_async_operation = storage_client.storage_accounts.begin_create(
+                resource_group,
+                storage_account,
+                {
+                    "location": location,
+                    "sku": {"name": "Standard_LRS"},
+                    "kind": "StorageV2",
+                    "enable_https_traffic_only": True
+                }
+            )
+            storage_account_result = storage_async_operation.result()
+
+            keys = storage_client.storage_accounts.list_keys(resource_group, storage_account)
+            account_key = keys.keys[0].value
+            connection_str = f"DefaultEndpointsProtocol=https;AccountName={storage_account};AccountKey={account_key};EndpointSuffix=core.windows.net"
+
+            blob_service_client = BlobServiceClient.from_connection_string(connection_str)
+            blob_service_client.create_container(container_name)
+
+        except Exception as ex:
+            print(ex)
+            raise HTTPException(detail="The request bucket name is not available", status_code=status.HTTP_400_BAD_REQUEST)
+        
+    async def initialize_backend(self, azure_bucket_data):        
+
+        backend_config = f"""
+        resource_group_name  = "{azure_bucket_data['resource_group_name']}"
+        storage_account_name  = "{azure_bucket_data['storage_account_name']}"
+        container_name = "{azure_bucket_data['container_name']}"
+        key = "{azure_bucket_data['key']}"
+        """
+
+
+        configure_backend(backend_config=backend_config, infra="azure", bucket_name=azure_bucket_data["container_name"])
+
 
 
 

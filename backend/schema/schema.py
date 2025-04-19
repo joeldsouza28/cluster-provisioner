@@ -32,6 +32,8 @@ class AzureRemoteBackend(BaseModel):
     storage_account_name: str
     container_name: str
     key: str
+    subscription_id: str
+    location: str
 
 class AzureClusterDetails(BaseModel):
     name: str

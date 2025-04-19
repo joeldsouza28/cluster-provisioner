@@ -9,15 +9,18 @@ import {
 } from "../../ui/table";
 
 
-export interface GCPRemoteBackendKey {
+export interface AzureRemoteBackendKeys {
   id: number;
-  project_id: string;
-  bucket_name: string;
+  subscription_id: string;
+  resource_group_name: string;
+  storage_account_name: string;
+  container_name: string;
+  key: string;
   created_at: string;
 }
 
 // Define the table data using the interface
-export default function GCPRemoteBackend({ tableData}) {
+export default function AzureRemoteBackend({tableData}) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">
@@ -30,13 +33,31 @@ export default function GCPRemoteBackend({ tableData}) {
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Bucket Name
+                Subscription Id
               </TableCell>
               <TableCell
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Project Id
+                Resource Group Name
+              </TableCell>
+              <TableCell
+                isHeader
+                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+              >
+                Storage Account Name
+              </TableCell>
+              <TableCell
+                isHeader
+                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+              >
+                Container Name
+              </TableCell>
+              <TableCell
+                isHeader
+                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+              >
+                Key
               </TableCell>
               <TableCell
                 isHeader
@@ -49,21 +70,36 @@ export default function GCPRemoteBackend({ tableData}) {
 
           {/* Table Body */}
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {tableData.map((gcp_key: GCPRemoteBackendKey, i: number) => (
+            {tableData.map((azure_key: AzureRemoteBackendKeys, i: number) => (
               <TableRow key={i}>
                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                   <div className="flex items-center gap-3">
-                    {gcp_key.bucket_name}
+                    {azure_key.subscription_id}
                   </div>
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                   <div className="flex -space-x-2">
-                  {gcp_key.project_id}
+                  {azure_key.resource_group_name}
                   </div>
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                   <div className="flex -space-x-2">
-                    {gcp_key.created_at}
+                    {azure_key.storage_account_name}
+                  </div>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                  <div className="flex -space-x-2">
+                    {azure_key.container_name}
+                  </div>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                  <div className="flex -space-x-2">
+                    {azure_key.key}
+                  </div>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                  <div className="flex -space-x-2">
+                    {azure_key.created_at}
                   </div>
                 </TableCell>
               </TableRow>

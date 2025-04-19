@@ -32,6 +32,8 @@ class AzureRemoteBackendConfig(Base):
     storage_account_name = Column(String)
     container_name = Column(String)
     key = Column(String)
+    subscription_id = Column(String, ForeignKey('azure_keys.subscription_id'))
+    location = Column(String)
     created_at = Column(DateTime, server_default=func.now()) 
 
 
@@ -46,7 +48,8 @@ class AzureKey(Base):
     client_id = Column(String)
     client_secret = Column(String)
     tenant_id = Column(String)
-    subscription_id = Column(String)
+    subscription_id = Column(String, unique=True)
+    active = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
 
 

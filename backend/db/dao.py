@@ -25,10 +25,6 @@ class GcpDao():
         await self.db.execute(update_active_query)
         await self.db.commit()
         
-        update_inactive_query
-
-        await self.db.close()
-
 
 
     async def get_gcp_key(self):
@@ -121,13 +117,18 @@ class AzureDao():
         gcp_data = AzureKey(**data)
         self.db.add(gcp_data)
 
-    async def get_gcp_keys(self):
+    async def delete_gcp_keys(self, id):
+        query = delete(AzureKey).where(AzureKey.id == id)
+        await self.db.execute(query)
+
+    async def get_azure_keys(self):
         query = select(
             AzureKey.id, 
             AzureKey.client_id, 
             AzureKey.tenant_id, 
             AzureKey.subscription_id, 
-            AzureKey.created_at
+            AzureKey.created_at,
+            AzureKey.active
         ).order_by(desc(AzureKey.created_at))
         data = await self.db.execute(query)
 
@@ -140,8 +141,8 @@ class AzureDao():
 
         return final_data
 
-    async def get_azure_remote_bucket(self):
-        query = select(AzureRemoteBackendConfig).order_by(desc(AzureRemoteBackendConfig.created_at))
+    async def get_azure_remote_bucket(self, key_id):
+        query = select(AzureRemoteBackendConfig).where(AzureRemoteBackendConfig.subscription_id==key_id).order_by(desc(AzureRemoteBackendConfig.created_at))
         data = await self.db.execute(query)
 
         data = data.fetchone()
@@ -151,10 +152,22 @@ class AzureDao():
             data_dict.pop("_sa_instance_state", None) 
             data_dict.pop("created_at", None) 
             data_dict.pop("id", None) 
-            return data
+            return data_dict
 
     async def get_azure_key(self):
-        query = select(AzureKey).order_by(desc(AzureKey.created_at))
+        query = select(AzureKey).where(AzureKey.active == True).order_by(desc(AzureKey.created_at))
+        data = await self.db.execute(query)
+        data = data.fetchone()
+        if data:
+            data = data[0]
+            data_dict = data.__dict__.copy()  # Copy to avoid modifying the original object
+            data_dict.pop("_sa_instance_state", None) 
+            data_dict.pop("created_at", None) 
+            data_dict.pop("id", None)
+            return data_dict
+
+    async def get_azure_key_by_id(self, key_id):
+        query = select(AzureKey).where(AzureKey.subscription_id == key_id).order_by(desc(AzureKey.created_at))
         data = await self.db.execute(query)
 
         data = data.fetchone()
@@ -172,6 +185,43 @@ class AzureDao():
         gcp_remote_backend = AzureRemoteBackendConfig(**data)
         self.db.add(gcp_remote_backend)
 
+
+    async def get_azure_remote_buckets(self):
+        
+        query = select(
+            AzureRemoteBackendConfig.container_name,
+            AzureRemoteBackendConfig.resource_group_name,
+            AzureRemoteBackendConfig.storage_account_name,
+            AzureRemoteBackendConfig.key,
+            AzureRemoteBackendConfig.subscription_id,
+            AzureRemoteBackendConfig.created_at
+        ).order_by(desc(AzureRemoteBackendConfig.created_at))
+        data = await self.db.execute(query)
+
+        data = data.fetchall()
+        final_data = []
+        for d in data:
+            d = d._asdict()
+            final_data.append({
+                "container_name": d["container_name"],
+                "resource_group_name": d["resource_group_name"],
+                "key": d["key"],
+                "storage_account_name": d["storage_account_name"],
+                "subscription_id": d["subscription_id"],
+                "created_at": d.get("created_at").strftime("%d-%m-%d %H:%M:%S"),
+            })
+        
+        return final_data
+    
+    async def set_active_azure_active_key(self, id, active):
+
+        update_inactive_query = update(AzureKey).where(AzureKey.active==True).values(active=False)
+        await self.db.execute(update_inactive_query)
+        await self.db.commit()
+
+        update_active_query = update(AzureKey).where(AzureKey.id==id).values(active=active)
+        await self.db.execute(update_active_query)
+        await self.db.commit()
         
 
 class TerraformLogDao():
@@ -224,4 +274,7 @@ class TerraformLogDao():
         await self.db.commit()
         await self.db.close()
         return terraform_log.log_id
+    
+     
+    
         

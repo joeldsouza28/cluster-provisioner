@@ -1,5 +1,5 @@
 from fastapi.routing import APIRouter
-from fastapi import Depends, BackgroundTasks
+from fastapi import Depends, BackgroundTasks, HTTPException, status
 from backend.db.dependency import get_db_connection
 from backend.utils import GCPUtils, TerraformUtils, run_kubernetes_terraform
 from backend.db.dao import GcpDao
@@ -55,7 +55,7 @@ async def add_gcp_remote_backend(gcp_remote_backend: GCPRemoteBackend, db=Depend
     await gcp_utils.set_gcp_env(id=gcp_remote_backend.project_id)
     await gcp_utils.create_gcp_bucket(bucket_name=gcp_remote_backend.bucket_name, location=gcp_remote_backend.location)
     await gcp_dao.add_gcp_remote_bucket(bucket_name=gcp_remote_backend.bucket_name, project_id=gcp_remote_backend.project_id)
-    await gcp_utils.initialize_backend(bucket_name=gcp_remote_backend.bucket_name)
+    
     return {
         "detail": "Added remote backend for gcp"
     }
@@ -68,7 +68,6 @@ async def get_gcp_remote_backend(db=Depends(get_db_connection)):
     return {
         "remote_backends": remote_buckets
     }
-    pass
 
 @api_router.post("/add-keys")
 async def add_gcp_key(gcp_keys: GCPKeys, db=Depends(get_db_connection)):
@@ -96,7 +95,18 @@ async def delete_gcp_key(id: int, db=Depends(get_db_connection)):
 @api_router.post("/set-active")
 async def set_active(active_key: ActiveKey, db=Depends(get_db_connection)):
     gcp_dao = GcpDao(db=db)
+    gcp_utils = GCPUtils(db=db)
+
+    from backend.utils import task_running
+    log_values = list(task_running.values())
+    if True in log_values:
+        raise HTTPException(detail="Cannot set active now as you have certain terraform task running", status_code=status.HTTP_400_BAD_REQUEST)
+
     await gcp_dao.set_active_gcp_active_key(id=active_key.id, active=True)
+    gcp_keys = await gcp_dao.get_gcp_key()
+    await gcp_utils.set_gcp_env(id=gcp_keys["project_id"])
+    gcp_remote_bucket = await gcp_dao.get_gcp_remote_bucket(key_id=gcp_keys["project_id"])
+    await gcp_utils.initialize_backend(bucket_name=gcp_remote_bucket["bucket_name"])
 
     return {
         "message": "Key successfully activated"
@@ -109,6 +119,7 @@ async def add_cluster(gcp_cluster_details:GCPClusterDetails, background_tasks: B
     gcp_util = GCPUtils(db=db)
     tf_utils = TerraformUtils(db=db)
     await gcp_util.set_gcp_env()
+    
     project_id = os.environ.get("TF_VAR_project_id")
     bucket_data = await gcp_util.get_remote_bucket(project_id=project_id)
     await gcp_util.initialize_backend(bucket_name=bucket_data["bucket_name"])
@@ -132,6 +143,11 @@ async def delete_cluster(cluster_name: str, background_tasks: BackgroundTasks, d
     gcp_utils = GCPUtils(db=db)
     tf_utils = TerraformUtils(db=db)
     await gcp_utils.set_gcp_env()
+
+    project_id = os.environ.get("TF_VAR_project_id")
+    bucket_data = await gcp_utils.get_remote_bucket(project_id=project_id)
+    await gcp_utils.initialize_backend(bucket_name=bucket_data["bucket_name"])
+
     gcp_utils.delete_from_gcp_tfvars(cluster_name=cluster_name)
     tf_log_id = await tf_utils.get_log_id(provider="GCP", action="delete", cluster_name=cluster_name, location="")
 
