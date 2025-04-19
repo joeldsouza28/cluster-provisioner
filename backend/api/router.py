@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request
 
 api_router = APIRouter()
 
+
 @api_router.get("/")
 def health_check(req: Request):
     return {"Success": True}
@@ -14,4 +15,3 @@ def health_check(req: Request):
 api_router.include_router(prefix="/gcp", router=gcp_router)
 api_router.include_router(prefix="/azure", router=azure_router)
 api_router.include_router(prefix="/common", router=common_router)
-

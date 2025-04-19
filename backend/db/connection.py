@@ -5,7 +5,6 @@ from typing import Awaitable, Callable
 from fastapi import FastAPI
 
 
-
 DATABASE_URL = os.environ.get("DB_URL")
 
 
@@ -27,7 +26,6 @@ Base = declarative_base()
 
 
 # def initialize_gcp_backend():
-
 
 
 def _setup_db(app: FastAPI) -> None:  # pragma: no cover

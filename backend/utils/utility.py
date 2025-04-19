@@ -7,43 +7,39 @@ from google.cloud import container_v1
 from google.cloud import compute_v1
 import time
 import subprocess
-from googleapiclient.discovery import build
-from azure.identity import DefaultAzureCredential
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import BlobServiceClient
-from azure.mgmt.resource import SubscriptionClient
-from google.auth import default
 import requests
 from google.cloud import storage
-import os
 from fastapi import HTTPException
 from fastapi import status
-import shutil
 
 GCP_KEY_PATH = "/tmp/gcp_sa_key.json"  # Temporary storage for the key
 
 task_running = {}
 
-class TerraformUtils():
+
+class TerraformUtils:
     def __init__(self, db):
         self.db = db
 
     async def get_log_id(self, provider, action, cluster_name, location):
         tf_dao = TerraformLogDao(db=self.db)
-        tf_id = await tf_dao.create_log_file(provider=provider, action=action, cluster_name=cluster_name, location=location)
+        tf_id = await tf_dao.create_log_file(
+            provider=provider, action=action, cluster_name=cluster_name, location=location
+        )
         return tf_id
-    
+
     async def get_active_log_ids(self):
         tf_dao = TerraformLogDao(db=self.db)
         tf_data = await tf_dao.get_active_log_ids()
         return tf_data
-    
 
     async def update_active_log_id(self, id):
         tf_dao = TerraformLogDao(db=self.db)
         await tf_dao.update_log_file(log_id=id, stream_status=True)
-    
+
 
 def run_kubernetes_terraform(data: dict):
     """Runs Terraform in the background."""
@@ -56,11 +52,12 @@ def run_kubernetes_terraform(data: dict):
         process = subprocess.Popen(
             ["terraform", "apply", "-auto-approve"],
             cwd=terraform_dir,
-            stdout=log_file, 
-            stderr=log_file
+            stdout=log_file,
+            stderr=log_file,
         )
-    process.wait() 
+    process.wait()
     task_running[tf_log_id] = False
+
 
 def run_azure_terraform(data: dict):
     """Runs Terraform in the background."""
@@ -68,18 +65,16 @@ def run_azure_terraform(data: dict):
     tf_log_id = data.get("log_id")
     task_running[tf_log_id] = True
 
-
     with open(f"terraform_output_{tf_log_id}.log", "w") as log_file:
         terraform_dir = "./infra/azure"
         process = subprocess.Popen(
             ["terraform", "apply", "-auto-approve"],
             cwd=terraform_dir,
-            stdout=log_file, 
-            stderr=log_file
+            stdout=log_file,
+            stderr=log_file,
         )
-    process.wait() 
+    process.wait()
     task_running[tf_log_id] = False
-
 
 
 def log_streamer(log_id):
@@ -87,8 +82,7 @@ def log_streamer(log_id):
     file_path = f"terraform_output_{log_id}.log"
     with open(file_path, "r") as file:
         for line in file:
-            yield line 
-
+            yield line
 
         while task_running.get(log_id, False):
             line = file.readline()
@@ -104,11 +98,12 @@ def log_streamer(log_id):
         for line in final_lines:
             yield line
 
+
 def is_terraform_initialized(path="."):
     return os.path.isdir(os.path.join(path, ".terraform"))
 
+
 def configure_backend(backend_config, infra, bucket_name):
-    
     config_file = f"./infra/{infra}/backend-{bucket_name}.config"
     with open(config_file, "w") as f:
         f.write(backend_config)
@@ -120,23 +115,24 @@ def configure_backend(backend_config, infra, bucket_name):
     process.wait()
 
 
-class GCPUtils():
+class GCPUtils:
     def __init__(self, db):
         self.db = db
 
     async def set_gcp_remote_backend(self, bucket_name):
         gcp_dao = GcpDao(db=self.db)
         await gcp_dao.add_gcp_remote_bucket(bucket_name=bucket_name)
-        
 
-    
     async def create_gcp_bucket(self, bucket_name, location):
         client = storage.Client()
         bucket = client.bucket(bucket_name)
         try:
             new_bucket = client.create_bucket(bucket, location=location)
-        except Exception as ex:
-            raise HTTPException(detail="The request bucket name is not available", status_code=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            raise HTTPException(
+                detail="The request bucket name is not available",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
     async def get_gcp_regions(self):
         client = compute_v1.RegionsClient()
@@ -148,7 +144,7 @@ class GCPUtils():
         for region in regions:
             regions_list.append(region.name)
         return regions_list
-    
+
     async def get_gcp_zones(self):
         client = compute_v1.ZonesClient()
         gcp_dao = GcpDao(db=self.db)
@@ -159,7 +155,7 @@ class GCPUtils():
         for zone in zones:
             zones_list.append(zone.name)
         return zones_list
-    
+
     async def get_gcp_machine_types(self, region):
         gcp_dao = GcpDao(db=self.db)
         gcp_keys = await gcp_dao.get_gcp_key()
@@ -174,20 +170,19 @@ class GCPUtils():
             machine_types = machine_client.list(project=gcp_keys["project_id"], zone=zone)
             for machine in machine_types:
                 machine_types_set.add(machine.name)
-                
+
         return sorted(list(machine_types_set))
-    
+
     async def get_remote_bucket(self, project_id):
         gcp_dao = GcpDao(db=self.db)
         bucket_data = await gcp_dao.get_gcp_remote_bucket(key_id=project_id)
         return bucket_data
 
-        
     async def get_gcp_keys(self):
         gcp_dao = GcpDao(db=self.db)
         gcp_keys = await gcp_dao.get_gcp_keys()
         return gcp_keys
-    
+
     async def initialize_backend(self, bucket_name):
         backend_config = f"""bucket  = "{bucket_name}"
         prefix  = "terraform/state"
@@ -196,7 +191,6 @@ class GCPUtils():
         configure_backend(backend_config=backend_config, infra="gcp", bucket_name=bucket_name)
 
     async def set_gcp_env(self, id=None):
-
         gcp_dao = GcpDao(db=self.db)
         if id:
             gcp_keys = await gcp_dao.get_gcp_key_by_id(project_id=id)
@@ -207,17 +201,16 @@ class GCPUtils():
             gcp_keys["token_uri"] = "https://oauth2.googleapis.com/token"
             gcp_keys["private_key"] = gcp_keys["private_key"].replace("\\n", "\n")
             json.dump(gcp_keys, file, ensure_ascii=False, indent=4)
-        
+
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
         os.environ["TF_VAR_project_id"] = gcp_keys["project_id"]
-        
 
     def update_gcp_tfvars(self, cluster_data):
         TERRAFORM_DIR = "./infra/gcp"
 
-        cluster_name: str = cluster_data.get("name") 
+        cluster_name: str = cluster_data.get("name")
         location: str = cluster_data.get("location")
-        
+
         tf_vars_path = os.path.join(TERRAFORM_DIR, "terraform.auto.tfvars.json")
         os.environ["TF_VAR_region"] = location
 
@@ -235,10 +228,9 @@ class GCPUtils():
         with open(tf_vars_path, "w") as f:
             json.dump(tf_vars, f, indent=2)
 
-
     def delete_from_gcp_tfvars(self, cluster_name):
         TERRAFORM_DIR = "./infra/gcp"
-        
+
         tf_vars_path = os.path.join(TERRAFORM_DIR, "terraform.auto.tfvars.json")
 
         # Load existing Terraform variables
@@ -259,7 +251,6 @@ class GCPUtils():
         with open(tf_vars_path, "w") as f:
             json.dump(tf_vars, f, indent=2)
 
-
     def list_gke_clusters(self):
         """Lists GKE clusters in a given project and region."""
         # parent = f"projects/{project_id}/locations/{region}"
@@ -270,35 +261,33 @@ class GCPUtils():
             3: "Reconciling",
             4: "Stopping",
             5: "Error",
-            6: "Degraded"
+            6: "Degraded",
         }
-
 
         # container_v1
         try:
             client = container_v1.ClusterManagerClient()
             project_id = os.environ.get("TF_VAR_project_id")
-            
+
             all_clusters = []
-    
+
             response = client.list_clusters(parent=f"projects/{project_id}/locations/-")
             for cluster in response.clusters:
-                all_clusters.append({
-                    "name": cluster.name,
-                    "location": cluster.location,
-                    "status": gke_cluster_status[cluster.status],
-                    "cloud": "GCP"
-                })
-            return all_clusters 
-        
-        except Exception as e:
+                all_clusters.append(
+                    {
+                        "name": cluster.name,
+                        "location": cluster.location,
+                        "status": gke_cluster_status[cluster.status],
+                        "cloud": "GCP",
+                    }
+                )
+            return all_clusters
+
+        except Exception:
             return []
 
 
-
-
-class AzureUtil():
-
+class AzureUtil:
     def __init__(self, db):
         self.db = db
 
@@ -311,7 +300,6 @@ class AzureUtil():
         azure_keys = await azure_dao.get_azure_keys()
         return azure_keys
 
-    
     async def get_azure_regions(self):
         credential = DefaultAzureCredential()
         SUBSCRIPTION_ID = os.environ.get("TF_VAR_subscription_id")
@@ -319,17 +307,14 @@ class AzureUtil():
         url = f"https://management.azure.com/subscriptions/{SUBSCRIPTION_ID}/locations?api-version=2016-06-01"
 
         token = credential.get_token("https://management.azure.com/.default").token
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
         response = requests.get(url, headers=headers)
         regions = []
         if response.status_code == 200:
             data = response.json()
             for region in data["value"]:
-                regions.append(region['name'])
+                regions.append(region["name"])
 
         return regions
 
@@ -339,20 +324,16 @@ class AzureUtil():
 
         token = credential.get_token("https://management.azure.com/.default").token
 
-
         url = f"https://management.azure.com/subscriptions/{SUBSCRIPTION_ID}/providers/Microsoft.Compute/locations/{region}/vmSizes?api-version=2024-07-01"
 
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         response = requests.get(url, headers=headers)
         machine_types = []
         if response.status_code == 200:
             data = response.json()
             for size in data["value"]:
-                machine_types.append(size['name'])
-        
+                machine_types.append(size["name"])
+
         return machine_types
 
     async def set_azure_env(self, key_id=None):
@@ -388,13 +369,10 @@ class AzureUtil():
 
         # configure_backend(backend_config=backend_config, infra="azure")
 
-
-    
-
     def update_azure_tfvars(self, cluster_data):
         try:
             TERRAFORM_DIR = "./infra/azure"
-            
+
             # Load existing tfvars file
             tf_vars_path = os.path.join(TERRAFORM_DIR, "terraform.auto.tfvars.json")
 
@@ -414,9 +392,9 @@ class AzureUtil():
                 json.dump(tf_vars, file, indent=4)
 
             return True
-        except Exception as e:
+        except Exception:
             return False
-        
+
     def delete_from_azure_tfvars(self, cluster_name):
         TERRAFORM_DIR = "./infra/azure"
 
@@ -448,26 +426,29 @@ class AzureUtil():
 
             clusters = aks_client.managed_clusters.list()
             cluster_list = []
-            
+
             for cluster in clusters:
-                cluster_list.append({
-                    "name": cluster.name,
-                    "location": cluster.location,
-                    "status": cluster.provisioning_state,
-                    "cloud": "Azure"
-                })
+                cluster_list.append(
+                    {
+                        "name": cluster.name,
+                        "location": cluster.location,
+                        "status": cluster.provisioning_state,
+                        "cloud": "Azure",
+                    }
+                )
 
             return cluster_list
-        except Exception as ex:
+        except Exception:
             return []
 
-    async def create_azure_container(self, resource_group, location, storage_account, container_name):
+    async def create_azure_container(
+        self, resource_group, location, storage_account, container_name
+    ):
         try:
-
             subscription_id = os.environ.get("ARM_SUBSCRIPTION_ID")
 
             credential = DefaultAzureCredential()
-            
+
             resource_client = ResourceManagementClient(credential, subscription_id)
             resource_client.resource_groups.create_or_update(resource_group, {"location": location})
 
@@ -479,8 +460,8 @@ class AzureUtil():
                     "location": location,
                     "sku": {"name": "Standard_LRS"},
                     "kind": "StorageV2",
-                    "enable_https_traffic_only": True
-                }
+                    "enable_https_traffic_only": True,
+                },
             )
             storage_account_result = storage_async_operation.result()
 
@@ -493,20 +474,21 @@ class AzureUtil():
 
         except Exception as ex:
             print(ex)
-            raise HTTPException(detail="The request bucket name is not available", status_code=status.HTTP_400_BAD_REQUEST)
-        
-    async def initialize_backend(self, azure_bucket_data):        
+            raise HTTPException(
+                detail="The request bucket name is not available",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
+    async def initialize_backend(self, azure_bucket_data):
         backend_config = f"""
-        resource_group_name  = "{azure_bucket_data['resource_group_name']}"
-        storage_account_name  = "{azure_bucket_data['storage_account_name']}"
-        container_name = "{azure_bucket_data['container_name']}"
-        key = "{azure_bucket_data['key']}"
+        resource_group_name  = "{azure_bucket_data["resource_group_name"]}"
+        storage_account_name  = "{azure_bucket_data["storage_account_name"]}"
+        container_name = "{azure_bucket_data["container_name"]}"
+        key = "{azure_bucket_data["key"]}"
         """
 
-
-        configure_backend(backend_config=backend_config, infra="azure", bucket_name=azure_bucket_data["container_name"])
-
-
-
-
+        configure_backend(
+            backend_config=backend_config,
+            infra="azure",
+            bucket_name=azure_bucket_data["container_name"],
+        )

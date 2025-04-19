@@ -1,10 +1,8 @@
 import enum
 from pathlib import Path
 from tempfile import gettempdir
-from typing import Optional
 
 from pydantic_settings import BaseSettings
-from yarl import URL
 
 TEMP_DIR = Path(gettempdir())
 
@@ -39,7 +37,6 @@ class Settings(BaseSettings):
     environment: str = "dev"
 
     log_level: LogLevel = LogLevel.INFO
-
 
 
 settings = Settings()

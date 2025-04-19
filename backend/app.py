@@ -5,6 +5,7 @@ from importlib import metadata
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.router import api_router
 
+
 def get_app() -> FastAPI:
     """
     Get FastAPI application.

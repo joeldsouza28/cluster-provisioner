@@ -3,13 +3,15 @@ from typing import Optional, List, TypeVar
 
 T = TypeVar("T")
 
+
 class GCPKeys(BaseModel):
     client_id: str
     client_email: EmailStr
-    private_key: str    
+    private_key: str
     private_key_id: str
     project_id: str
     type: str
+
 
 class ActiveKey(BaseModel):
     id: int
@@ -27,6 +29,7 @@ class GCPRemoteBackend(BaseModel):
     project_id: str
     location: str
 
+
 class AzureRemoteBackend(BaseModel):
     resource_group_name: str
     storage_account_name: str
@@ -34,6 +37,7 @@ class AzureRemoteBackend(BaseModel):
     key: str
     subscription_id: str
     location: str
+
 
 class AzureClusterDetails(BaseModel):
     name: str
@@ -44,12 +48,12 @@ class AzureClusterDetails(BaseModel):
     node_count: int
 
 
-
 class GCPClusterDetails(BaseModel):
     name: str
     location: str
     machine_type: str
     node_count: int
+
 
 class ErrorDetail(BaseModel):
     code: str
