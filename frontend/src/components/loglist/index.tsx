@@ -7,7 +7,13 @@ interface RunningTask {
     stream_status: boolean;
 }
 
-export default function LogList({runningTasks, openLogStreamModal}){
+type LogListProps = {
+    runningTasks: RunningTask[];
+    openLogStreamModal: (i: number)=>void;
+}
+
+
+export default function LogList({runningTasks, openLogStreamModal}: LogListProps){
     return (
         <Table>
             <TableHeader>

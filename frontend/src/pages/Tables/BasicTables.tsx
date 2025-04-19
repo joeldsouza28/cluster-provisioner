@@ -1,6 +1,5 @@
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
-import BasicTable from "../../components/tables/BasicTables/GCPKeysTable";
 
 export default function BasicTables() {
   return (

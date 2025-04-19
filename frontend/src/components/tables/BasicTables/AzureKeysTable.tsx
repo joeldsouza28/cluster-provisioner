@@ -17,8 +17,13 @@ export interface AzureKeys {
     active: boolean
 }
 
+type AzureKeysProps = {
+  tableData: AzureKeys[];
+  onDelete: (i: number)=>void;
+  setActive: (i: number)=>void;
+}
 
-export default function AzureKeys({tableData, onDelete, setActive}) {
+export default function AzureKeys({tableData, onDelete, setActive}: AzureKeysProps) {
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">

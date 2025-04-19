@@ -15,8 +15,6 @@ import Calendar from "./pages/Calendar";
 import BasicTables from "./pages/Tables/BasicTables";
 import FormElements from "./pages/Forms/FormElements";
 import Blank from "./pages/Blank";
-import GCPKeys from "./pages/GCPKeys/GCPKeys";
-import AzureKeys from "./pages/AzureKeys/AzureKeys";
 import ClusterList from "./pages/ClusterList/ClusterList";
 import AddCluster from "./pages/AddCluster/AddCluster";
 import AppLayout from "./layout/AppLayout";

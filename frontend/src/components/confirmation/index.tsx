@@ -1,7 +1,13 @@
 // components/ConfirmDialog.jsx
-import React from 'react';
 
-const ConfirmDialog = ({ message, onConfirm, onCancel }) => {
+type ConfirmDialogProps = {
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
+
+
+const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => {
   return (
     <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-xl shadow-xl text-center space-y-4">

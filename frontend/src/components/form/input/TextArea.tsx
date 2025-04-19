@@ -17,7 +17,6 @@ const TextArea: React.FC<TextareaProps> = ({
   rows = 3, // Default number of rows
   value = "", // Default value
   onChange, // Callback for changes
-  onKeyDown, // Callback for changes
   className = "", // Additional custom styles
   disabled = false, // Disabled state
   error = false, // Error state
@@ -28,17 +27,6 @@ const TextArea: React.FC<TextareaProps> = ({
       onChange(e.target.value);
     }
   };
-
-  const handleOnKeyDown =(e)=>{
-    if (e.key === 'Backspace') {
-      console.log(e.target.value);
-      console.log(value);
-      e.preventDefault(); // prevent default backspace behavior
-      if (onChange) {
-        onChange(e.target.value.slice(0, -1));
-      }
-    }
-  }
 
   let textareaClasses = `w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs focus:outline-hidden ${className} `;
 
@@ -57,7 +45,6 @@ const TextArea: React.FC<TextareaProps> = ({
         rows={rows}
         value={value}
         onChange={handleChange}
-        onKeyDown={(e)=>{handleOnKeyDown(e)}}
         disabled={disabled}
         className={textareaClasses}
       />

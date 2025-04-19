@@ -1,7 +1,7 @@
 
 
 type Item = {
-    value: number;
+    value: string;
     label: string;
 };
 
@@ -10,7 +10,7 @@ type RunningTask = {
     cloud: string;
     cluster_name: string;
     location: string;
-    stream_status: string;
+    stream_status: boolean;
     stream_url: string;
 }
 

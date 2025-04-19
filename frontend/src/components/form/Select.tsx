@@ -1,12 +1,9 @@
 import { useState } from "react";
+import { Item } from "../../services";
 
-interface Option {
-  value: string;
-  label: string;
-}
 
 interface SelectProps {
-  options: Option[];
+  options: Item[];
   placeholder?: string;
   onChange: (value: string) => void;
   className?: string;

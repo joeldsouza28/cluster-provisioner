@@ -6,9 +6,9 @@ interface LogStreamProps {
 }
 
 export const LogStream: React.FC<LogStreamProps> = ({streamUrl, postLogAction }) =>{
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState<string[]>([]);
     console.log(streamUrl)
-    const bottomRef = useRef(null); 
+    const bottomRef = useRef<HTMLDivElement | null>(null); 
     
     useEffect(()=>{
         if(streamUrl){
@@ -29,11 +29,16 @@ export const LogStream: React.FC<LogStreamProps> = ({streamUrl, postLogAction })
         
   
         while (true) {
-          const { done, value } = await reader?.read();
-          if (done) break;
+            let result = await reader?.read();
+            if (result) {
+                const { done, value } = result;
+            // use `done` and `value` here
+
+            if (done) break;
   
-          const chunk = decoder.decode(value);
-          setMessages((prev) => [...prev,chunk]);
+            const chunk = decoder.decode(value);
+            setMessages((prev) => [...prev,chunk]);
+          }
         }
       };
 

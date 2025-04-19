@@ -1,5 +1,3 @@
-import GCPKeys from "../../../pages/GCPKeys/GCPKeys";
-import Button from "../../ui/button/Button";
 import {
   Table,
   TableBody,
@@ -19,8 +17,12 @@ export interface AzureRemoteBackendKeys {
   created_at: string;
 }
 
+type AzureRemoteBackendProps = {
+    tableData: AzureRemoteBackendKeys[]
+}
+
 // Define the table data using the interface
-export default function AzureRemoteBackend({tableData}) {
+export default function AzureRemoteBackend({tableData}: AzureRemoteBackendProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">

@@ -1,10 +1,15 @@
-import { useState } from "react";
-import ComponentCard from "../../common/ComponentCard";
 import Label from "../Label";
 import Select from "../Select";
-import MultiSelect from "../MultiSelect";
+import { Item } from "../../../services";
 
-export default function SelectInputs({options, label, handleSelectChange}) {
+
+type SelectInputsType ={
+  options: Item[];
+  label: string;
+  handleSelectChange: (value: string)=>void;
+}
+
+export default function SelectInputs({options, label, handleSelectChange}: SelectInputsType) {
   // const options = [
     // { value: "marketing", label: "Marketing" },
     // { value: "template", label: "Template" },

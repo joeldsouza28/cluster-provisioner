@@ -8,10 +8,11 @@ import {LogStream} from "../../components/stream";
 import LogList from "../../components/loglist";
 import { getRegions, getMachineTypes, Item, getRunningLogTasks, RunningTask, addCluster} from "../../services";
 
+
 export default function AddCluster(){
     
 
-    let cloud_options = [
+    let cloud_options: Item[] = [
         {value: "gcp", label: "GCP"},
         {value: "azure", label: "Azure"},
     ]

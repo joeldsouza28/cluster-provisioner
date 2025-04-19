@@ -15,7 +15,13 @@ export interface ClusterData {
     cloud: string;
 }
 
-export default function ClusterTable({tableData, onDelete, disabledRows}) {
+type ClusterTableProps = {
+    tableData: ClusterData[];
+    onDelete: (i: number)=>void;
+    disabledRows: number[]
+}   
+
+export default function ClusterTable({tableData, onDelete, disabledRows}: ClusterTableProps) {
     
     
 

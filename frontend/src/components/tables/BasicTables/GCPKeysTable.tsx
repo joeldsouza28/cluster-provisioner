@@ -1,4 +1,3 @@
-import GCPKeys from "../../../pages/GCPKeys/GCPKeys";
 import Button from "../../ui/button/Button";
 import {
   Table,
@@ -16,10 +15,17 @@ export interface GCPKeys {
   client_email: string;
   type: string;
   created_at: string;
+  active: boolean;
 }
 
+type GCPKeysTableProps = {
+  tableData: GCPKeys[]; // you can replace `any` with a more specific type if known
+  onDelete: (id: number) => void; // adjust type as needed
+  setActive: (id: number) => void; // adjust type based on what you pass
+};
+
 // Define the table data using the interface
-export default function GCPKeysTable({ tableData, onDelete, setActive }) {
+export default function GCPKeysTable({ tableData, onDelete, setActive }: GCPKeysTableProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">

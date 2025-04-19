@@ -12,13 +12,12 @@ import ConfirmDialog from "../../components/confirmation";
 export default function ClusterList(){
 
     let [tableData, setTableData] = useState([]);
-    let [tableDataMapper, setTableDataMapper] = useState<Object>({});
     let [streamUrl, setStreamUrl] = useState("");
     let [isModalOpen, setIsModalOpen] = useState(false);
     let [logStreamModal, setLogStreamModal] = useState(false);
     let [showConfirmationPopup, setConfirmationPopup] = useState(false);
     let [deleteIndex, setDeleteIndex] = useState(0);
-    let [disabledRows, setDisabledRows] = useState([])
+    let [disabledRows, setDisabledRows] = useState<number[]>([])
 
     let [enableModal, setEnableModal] = useState(true)
     let [showLoader, setShowLoader] = useState(true)
@@ -30,13 +29,12 @@ export default function ClusterList(){
        let data = await getClustersList();
        let runningTasks = await getRunningTasks();
        setTableData(data);
-       let mapper = {}
+       let mapper: {[key: string]: number} = {}
        for(let i = 0; i < data.length; i++){
             const key =`${data[i].name}__${data[i].cloud}`;
             console.log(key);
             mapper[key] = i;
        }
-       setTableDataMapper(mapper);
        disableDelete(runningTasks, mapper);
        if(data){
         setShowLoader(false);
@@ -80,7 +78,7 @@ export default function ClusterList(){
         setIsModalOpen(false);
     }
 
-    const disableDelete = (runningTasks, tableDataMapper)=>{
+    const disableDelete = (runningTasks: RunningTask[], tableDataMapper: {[key: string]: number})=>{
         console.log(runningTasks);
         console.log(tableDataMapper);
         for(let i = 0; i < runningTasks.length; i++){

@@ -42,7 +42,7 @@ export default function KeysPage(){
     const [azureClientSecret, setAzureClientSecret] = useState("");
     const [projectId, setProjectId] = useState("");
     const [type, setType] = useState("");
-    const [projectIds, setProjectIds] = useState<{value: string, label: string}[]>([]);
+    const [projectIds, setProjectIds] = useState<Item[]>([]);
     const [regions, setRegions] = useState<Item[]>([]);
     const [gcpBucketModal, setGcpBucketModal] = useState(false)
     const [azureBucketModal, setAzureBucketModal] = useState(false)
