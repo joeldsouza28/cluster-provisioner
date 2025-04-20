@@ -3,6 +3,8 @@ import { Outlet } from "react-router";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
+import { useEffect } from "react";
+import { checkSession } from "../services";
 
 const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -28,6 +30,21 @@ const LayoutContent: React.FC = () => {
 };
 
 const AppLayout: React.FC = () => {
+  useEffect(()=>{
+    let fetchOauth = async()=>{
+      let response = await checkSession();
+
+      if(response.url.includes("login")){
+        window.location.href  = response.url;
+      }else{
+        let data = await response.json();
+        localStorage.setItem("user", JSON.stringify(data["user"]));
+      }
+    }
+
+    fetchOauth();
+  }, [])
+
   return (
     <SidebarProvider>
       <LayoutContent />

@@ -8,6 +8,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get update && apt-get install -y terraform && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    lsb-release \
+    && curl -sL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install poetry==2.1.2
 # Configuring poetry
 RUN poetry config virtualenvs.create false
@@ -21,6 +30,14 @@ WORKDIR /app/src
 
 COPY . /app/src
 RUN --mount=type=cache,target=/tmp/poetry_cache poetry install --only main
+
+#build frontend
+WORKDIR /app/src/frontend
+RUN npm install
+RUN npm run build
+RUN cp -r /app/src/frontend/dist /app/src/
+
+WORKDIR /app/src
 
 EXPOSE 8000
 CMD ["/usr/local/bin/python", "-m", "backend", "--host", "0.0.0.0"]

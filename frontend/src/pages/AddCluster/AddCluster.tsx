@@ -6,7 +6,7 @@ import Button from "../../components/ui/button/Button";
 import { Modal } from "../../components/ui/modal";
 import {LogStream} from "../../components/stream";
 import LogList from "../../components/loglist";
-import { getRegions, getMachineTypes, Item, getRunningLogTasks, RunningTask, addCluster} from "../../services";
+import { getRegions, getMachineTypes, Item, getRunningLogTasks, RunningTask, addCluster, baseUrl} from "../../services";
 
 
 export default function AddCluster(){
@@ -166,7 +166,7 @@ export default function AddCluster(){
             }
         }
         let response_data = await addCluster(data, cloud)
-        setStreamUrl(`http://localhost:8000${response_data["stream_url"]}`);
+        setStreamUrl(`${baseUrl}${response_data["stream_url"]}`);
     }
 
     useEffect(()=>{

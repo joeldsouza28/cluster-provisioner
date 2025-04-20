@@ -2,7 +2,10 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 from backend.utils import GCPUtils, AzureUtil, TerraformUtils, log_streamer
 from backend.db.dependency import get_db_connection
-
+from authlib.integrations.starlette_client import OAuth
+from starlette.config import Config
+from starlette.responses import RedirectResponse
+import os
 
 api_router = APIRouter()
 
@@ -20,8 +23,63 @@ def stream_logs(req: Request):
         },
     )
 
+client_id = os.environ.get("GITHUB_CLIENT_ID")
+client_secret = os.environ.get("GITHUB_CLIENT_SECRET")
 
-@api_router.get("/list-clusters/")
+config_data = {
+    'GITHUB_CLIENT_ID': client_id,
+    'GITHUB_CLIENT_SECRET': client_secret,
+}
+
+
+
+
+config = Config(environ=config_data)
+oauth = OAuth(config)
+oauth.register(
+    name='github',
+    client_id=config_data["GITHUB_CLIENT_ID"],
+    client_secret=config_data["GITHUB_CLIENT_SECRET"],
+    access_token_url='https://github.com/login/oauth/access_token',
+    access_token_params=None,
+    authorize_url='https://github.com/login/oauth/authorize',
+    authorize_params=None,
+    api_base_url='https://api.github.com/',
+    client_kwargs={'scope': 'user:email read:user'},
+)
+
+@api_router.get("/check-session")
+async def check_session(request: Request):
+    print(request.session)
+    if not bool(request.session):
+        return RedirectResponse("/login")
+    else:
+        return request.session   
+
+
+@api_router.get("/logout")
+async def logout(request: Request):
+    request.session["user"] = None
+    return {
+        "message": "Logged out"
+    } 
+
+@api_router.get("/oauth")
+async def oauth_login(request: Request):
+    redirect_uri = request.url_for('auth')
+    return await oauth.github.authorize_redirect(request, redirect_uri)
+
+
+@api_router.get("/callback", name="auth")
+async def auth(request: Request):
+    token = await oauth.github.authorize_access_token(request)
+    profile = await oauth.github.get('user', token=token)
+    user_data = profile.json()
+    request.session["user"] = user_data
+    return RedirectResponse(url="/")
+
+
+@api_router.get("/list-clusters")
 async def get_gke_clusters(db=Depends(get_db_connection)):
     """API endpoint to list GKE clusters in a given project and region."""
     gcp_utils = GCPUtils(db=db)
