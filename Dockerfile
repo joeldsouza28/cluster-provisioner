@@ -39,8 +39,10 @@ RUN cp -r /app/src/frontend/dist /app/src/
 
 WORKDIR /app/src
 
+RUN chmod +x /app/src/startup.sh
+
 EXPOSE 8000
-CMD ["/usr/local/bin/python", "-m", "backend", "--host", "0.0.0.0"]
+CMD ["sh", "startup.sh"]
 
 FROM prod AS dev
 

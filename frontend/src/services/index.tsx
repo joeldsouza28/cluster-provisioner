@@ -165,7 +165,7 @@ const checkSession = async()=>{
 }
 
 const getAuthUrl = ()=>{
-    return  "${baseUrl}/api/common/oauth"
+    return  `${baseUrl}/api/common/oauth`
 }
 
 
