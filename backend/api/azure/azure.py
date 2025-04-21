@@ -12,16 +12,22 @@ api_router = APIRouter()
 @api_router.get("/get-regions")
 async def get_azure_regions(db=Depends(get_db_connection)):
     azure_utils = AzureUtil(db=db)
-    await azure_utils.set_azure_env()
-    regions = await azure_utils.get_azure_regions()
+    azure_keys = await azure_utils.set_azure_env()
+    if azure_keys:
+        regions = await azure_utils.get_azure_regions()
+    else:
+        regions = []
     return {"regions": regions}
 
 
 @api_router.get("/get-machine-types")
 async def get_azure_machine_types(region: str, db=Depends(get_db_connection)):
     azure_utils = AzureUtil(db=db)
-    await azure_utils.set_azure_env()
-    machine_types = await azure_utils.get_azure_machine_type(region=region)
+    azure_keys = await azure_utils.set_azure_env()
+    if azure_keys:
+        machine_types = await azure_utils.get_azure_machine_type(region=region)
+    else:
+        machine_types = []
     return {"machine_types": machine_types}
 
 
@@ -45,15 +51,17 @@ async def add_azure_remote_backend(
 ):
     azure_dao = AzureDao(db=db)
     azure_utils = AzureUtil(db=db)
-    await azure_utils.set_azure_env()
-    await azure_utils.create_azure_container(
-        resource_group=azure_remote_backend.resource_group_name,
-        location=azure_remote_backend.location,
-        storage_account=azure_remote_backend.storage_account_name,
-        container_name=azure_remote_backend.container_name,
-    )
-    await azure_dao.add_azure_remote_bucket(azure_remote_backend.model_dump())
-
+    azure_keys = await azure_utils.set_azure_env()
+    if azure_keys:
+        await azure_utils.create_azure_container(
+            resource_group=azure_remote_backend.resource_group_name,
+            location=azure_remote_backend.location,
+            storage_account=azure_remote_backend.storage_account_name,
+            container_name=azure_remote_backend.container_name,
+        )
+        await azure_dao.add_azure_remote_bucket(azure_remote_backend.model_dump())
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please add atleast one azure configuration keys")
     return {"detail": "Added remote backend for azure"}
 
 

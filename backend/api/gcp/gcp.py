@@ -12,24 +12,34 @@ api_router = APIRouter()
 @api_router.get("/get-regions")
 async def get_gcp_regions(db=Depends(get_db_connection)):
     gcp_utils = GCPUtils(db=db)
-    await gcp_utils.set_gcp_env()
-    regions = await gcp_utils.get_gcp_regions()
+    gcp_keys = await gcp_utils.set_gcp_env()
+    if gcp_keys:
+        regions = await gcp_utils.get_gcp_regions()
+    else:
+        regions = []
     return {"regions": regions}
+    
 
 
 @api_router.get("/get-zones")
 async def get_gcp_zones(db=Depends(get_db_connection)):
     gcp_utils = GCPUtils(db=db)
-    await gcp_utils.set_gcp_env()
-    zones = await gcp_utils.get_gcp_zones()
+    gcp_keys= await gcp_utils.set_gcp_env()
+    if gcp_keys:
+        zones = await gcp_utils.get_gcp_zones()
+    else:
+        zones = []
     return {"zones": zones}
 
 
 @api_router.get("/get-machine-types")
 async def get_gcp_machine_types(region: str, db=Depends(get_db_connection)):
     gcp_utils = GCPUtils(db=db)
-    await gcp_utils.set_gcp_env()
-    machine_types = await gcp_utils.get_gcp_machine_types(region=region)
+    gcp_keys = await gcp_utils.set_gcp_env()
+    if gcp_keys:
+        machine_types = await gcp_utils.get_gcp_machine_types(region=region)
+    else:
+        machine_types = []
     return {"machine_types": machine_types}
 
 
@@ -46,15 +56,17 @@ async def add_gcp_remote_backend(
 ):
     gcp_utils = GCPUtils(db=db)
     gcp_dao = GcpDao(db=db)
-    await gcp_utils.set_gcp_env(id=gcp_remote_backend.project_id)
-    await gcp_utils.create_gcp_bucket(
-        bucket_name=gcp_remote_backend.bucket_name, location=gcp_remote_backend.location
-    )
-    await gcp_dao.add_gcp_remote_bucket(
-        bucket_name=gcp_remote_backend.bucket_name, project_id=gcp_remote_backend.project_id
-    )
-
-    return {"detail": "Added remote backend for gcp"}
+    gcp_keys = await gcp_utils.set_gcp_env(id=gcp_remote_backend.project_id)
+    if gcp_keys:
+        await gcp_utils.create_gcp_bucket(
+            bucket_name=gcp_remote_backend.bucket_name, location=gcp_remote_backend.location
+        )
+        await gcp_dao.add_gcp_remote_bucket(
+            bucket_name=gcp_remote_backend.bucket_name, project_id=gcp_remote_backend.project_id
+        )
+        return {"detail": "Added remote backend for gcp"}
+    else:
+        raise HTTPException(detail="Please add at least one gcp service account key", status_code=status.HTTP_400_BAD_REQUEST)
 
 
 @api_router.get("/get-remote-backend")

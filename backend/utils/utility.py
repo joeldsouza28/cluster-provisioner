@@ -197,13 +197,16 @@ class GCPUtils:
         else:
             gcp_keys = await gcp_dao.get_gcp_key()
 
-        with open(GCP_KEY_PATH, "w", encoding="utf-8") as file:
-            gcp_keys["token_uri"] = "https://oauth2.googleapis.com/token"
-            gcp_keys["private_key"] = gcp_keys["private_key"].replace("\\n", "\n")
-            json.dump(gcp_keys, file, ensure_ascii=False, indent=4)
+        if gcp_keys is not None:
+            with open(GCP_KEY_PATH, "w", encoding="utf-8") as file:
+                gcp_keys["token_uri"] = "https://oauth2.googleapis.com/token"
+                gcp_keys["private_key"] = gcp_keys["private_key"].replace("\\n", "\n")
+                json.dump(gcp_keys, file, ensure_ascii=False, indent=4)
 
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
-        os.environ["TF_VAR_project_id"] = gcp_keys["project_id"]
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
+            os.environ["TF_VAR_project_id"] = gcp_keys["project_id"]
+            
+        return gcp_keys
 
     def update_gcp_tfvars(self, cluster_data):
         TERRAFORM_DIR = "./infra/gcp"
@@ -342,19 +345,21 @@ class AzureUtil:
             azure_key = await azure_dao.get_azure_key_by_id(key_id=key_id)
         else:
             azure_key = await azure_dao.get_azure_key()
-        print(azure_key)
-        os.environ["TF_VAR_client_id"] = azure_key["client_id"]
-        os.environ["TF_VAR_client_secret"] = azure_key["client_secret"]
-        os.environ["TF_VAR_tenant_id"] = azure_key["tenant_id"]
-        os.environ["AZURE_CLIENT_ID"] = azure_key["client_id"]
-        os.environ["AZURE_TENANT_ID"] = azure_key["tenant_id"]
-        os.environ["AZURE_CLIENT_SECRET"] = azure_key["client_secret"]
+        if azure_key is not None:
+            os.environ["TF_VAR_client_id"] = azure_key["client_id"]
+            os.environ["TF_VAR_client_secret"] = azure_key["client_secret"]
+            os.environ["TF_VAR_tenant_id"] = azure_key["tenant_id"]
+            os.environ["AZURE_CLIENT_ID"] = azure_key["client_id"]
+            os.environ["AZURE_TENANT_ID"] = azure_key["tenant_id"]
+            os.environ["AZURE_CLIENT_SECRET"] = azure_key["client_secret"]
 
-        os.environ["ARM_CLIENT_ID"] = azure_key["client_id"]
-        os.environ["ARM_CLIENT_SECRET"] = azure_key["client_secret"]
-        os.environ["ARM_SUBSCRIPTION_ID"] = azure_key["subscription_id"]
-        os.environ["ARM_TENANT_ID"] = azure_key["tenant_id"]
-        os.environ["TF_VAR_subscription_id"] = azure_key["subscription_id"]
+            os.environ["ARM_CLIENT_ID"] = azure_key["client_id"]
+            os.environ["ARM_CLIENT_SECRET"] = azure_key["client_secret"]
+            os.environ["ARM_SUBSCRIPTION_ID"] = azure_key["subscription_id"]
+            os.environ["ARM_TENANT_ID"] = azure_key["tenant_id"]
+            os.environ["TF_VAR_subscription_id"] = azure_key["subscription_id"]
+            
+        return azure_key
 
         # azure_bucket_data = await azure_dao.get_azure_remote_bucket()
 
