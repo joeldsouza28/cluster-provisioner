@@ -3,7 +3,12 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { Link } from "react-router";
 import { logout } from "../../services";
 
-export default function UserDropdown() {
+export type UserDetails = {
+  name: string;
+  avatar_url: string
+}
+
+export default function UserDropdown({ name, avatar_url}: UserDetails) {
   const [isOpen, setIsOpen] = useState(false);
   const clearSession = async()=>{
     await logout();
@@ -17,8 +22,10 @@ export default function UserDropdown() {
     setIsOpen(false);
   }
 
-  let data: string|null = localStorage.getItem("user");
-  let dataItem: {name: string, avatar_url: string} = data !== null ? JSON.parse(data): {"name": "Dummy Name", "avatar_url": ""};
+  
+  // if(data === null){
+  //   window.location.href = "/login"
+  // }
 
   return (
     <div className="relative">
@@ -27,10 +34,10 @@ export default function UserDropdown() {
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
         <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src={dataItem["avatar_url"]} alt="User" />
+          <img src={avatar_url} alt="User" />
         </span>
 
-        <span className="block mr-1 font-medium text-theme-sm">{dataItem["name"]}</span>
+        <span className="block mr-1 font-medium text-theme-sm">{name}</span>
         <svg
           className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""

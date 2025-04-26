@@ -52,9 +52,13 @@ oauth.register(
 async def check_session(request: Request):
     print(request.session)
     if not bool(request.session):
+        print("here")
         return RedirectResponse("/login")
     else:
-        return request.session   
+        print("here1")
+        return {
+            "user": request.session["user"]
+        }
 
 
 @api_router.get("/logout")
@@ -75,6 +79,7 @@ async def auth(request: Request):
     token = await oauth.github.authorize_access_token(request)
     profile = await oauth.github.get('user', token=token)
     user_data = profile.json()
+    print(user_data)
     request.session["user"] = user_data
     return RedirectResponse(url="/")
 
@@ -84,12 +89,20 @@ async def get_gke_clusters(db=Depends(get_db_connection)):
     """API endpoint to list GKE clusters in a given project and region."""
     gcp_utils = GCPUtils(db=db)
     azure_utils = AzureUtil(db=db)
+    gke_clusters = []
+    azure_clusters = []
+    azure_keys = await azure_utils.get_azure_keys()
+    gcp_keys = await gcp_utils.get_gcp_keys()
 
-    await gcp_utils.set_gcp_env()
-    await azure_utils.set_azure_env()
+    for key in azure_keys:
+        await azure_utils.set_azure_env(key_id=key["subscription_id"])
+        azure_clusters += azure_utils.list_azure_clusters()
+    
+    for key in gcp_keys:
+        await gcp_utils.set_gcp_env(id=key["project_id"])
+        gke_clusters += gcp_utils.list_gke_clusters()
 
-    gke_clusters = gcp_utils.list_gke_clusters()
-    azure_clusters = azure_utils.list_azure_clusters()
+
     return {"clusters": gke_clusters + azure_clusters}
 
 

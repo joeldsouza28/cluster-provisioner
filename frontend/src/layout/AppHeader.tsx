@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import UserDropdown from "../components/header/UserDropdown";
+import { UserDetails } from "../components/header/UserDropdown";
+import { LogoIcon } from "../icons";
 
-const AppHeader: React.FC = () => {
+const AppHeader = ({name, avatar_url}: UserDetails) => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
@@ -100,12 +102,18 @@ const AppHeader: React.FC = () => {
             </svg>
           </button>
         </div>
+        <LogoIcon className="w-30 h-30"/>
+        <div className="text-gray-500 text-5xl">
+            QubeMech
+        </div>
         <div
           className={`${
             isApplicationMenuOpen ? "flex" : "hidden"
           } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}
         >
+          
           <div className="flex items-center gap-2 2xsm:gap-3">
+         
             {/* <!-- Dark Mode Toggler --> */}
             <ThemeToggleButton />
             {/* <!-- Dark Mode Toggler --> */}
@@ -113,7 +121,7 @@ const AppHeader: React.FC = () => {
             {/* <!-- Notification Menu Area --> */}
           </div>
           {/* <!-- User Area --> */}
-          <UserDropdown />
+          <UserDropdown name={name} avatar_url={avatar_url} />
         </div>
       </div>
     </header>

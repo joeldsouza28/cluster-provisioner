@@ -282,6 +282,7 @@ class GCPUtils:
                         "location": cluster.location,
                         "status": gke_cluster_status[cluster.status],
                         "cloud": "GCP",
+                        "key_id": project_id
                     }
                 )
             return all_clusters
@@ -439,6 +440,7 @@ class AzureUtil:
                         "location": cluster.location,
                         "status": cluster.provisioning_state,
                         "cloud": "Azure",
+                        "key_id": SUBSCRIPTION_ID
                     }
                 )
 
