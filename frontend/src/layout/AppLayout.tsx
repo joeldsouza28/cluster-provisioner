@@ -21,7 +21,7 @@ const LayoutContent: React.FC = () => {
         setName(user["name"]);
       } catch (error) {
         console.error('Error fetching data:', error);
-        window.location.href = "/login"
+        window.location.href = "/login";
       }
     };
     fetchData();

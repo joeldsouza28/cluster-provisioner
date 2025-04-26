@@ -3,6 +3,7 @@ import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import UserDropdown from "../components/header/UserDropdown";
 import { UserDetails } from "../components/header/UserDropdown";
+import { LogoIcon } from "../icons";
 
 const AppHeader = ({name, avatar_url}: UserDetails) => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
@@ -101,6 +102,7 @@ const AppHeader = ({name, avatar_url}: UserDetails) => {
             </svg>
           </button>
         </div>
+        <LogoIcon className="w-30 h-30"/>
         <div className="text-gray-500 text-5xl">
             QubeMech
         </div>
