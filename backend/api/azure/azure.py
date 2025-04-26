@@ -147,17 +147,18 @@ async def add_azure_cluster(
     }
 
 
-@api_router.delete("/delete-cluster/{cluster_name}")
+@api_router.delete("/delete-cluster/{cluster_name}/{subscription_id}")
 async def delete_azure_cluster(
-    cluster_name: str, background_tasks: BackgroundTasks, db=Depends(get_db_connection)
+    cluster_name: str, subscription_id: str, background_tasks: BackgroundTasks, db=Depends(get_db_connection)
 ):
     """
     API to delete a specific GKE cluster.
     Example request: DELETE /delete-gke-cluster/cluster-1
     """
+    print(subscription_id)
     azure_utils = AzureUtil(db=db)
     tf_utils = TerraformUtils(db=db)
-    await azure_utils.set_azure_env()
+    await azure_utils.set_azure_env(key_id=subscription_id)
     azure_utils.delete_from_azure_tfvars(cluster_name=cluster_name)
 
     tf_log_id = await tf_utils.get_log_id(

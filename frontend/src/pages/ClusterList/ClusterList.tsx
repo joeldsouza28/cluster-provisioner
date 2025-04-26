@@ -3,13 +3,13 @@ import { useState, useEffect, useRef } from "react"
 import Button from "../../components/ui/button/Button";
 import { Link } from "react-router";
 import { Modal } from "../../components/ui/modal";
-import {LogStream} from "../../components/stream";
+import { LogStream } from "../../components/stream";
 import LogList from "../../components/loglist";
 import { getRunningLogTasks, RunningTask, deleteCluster, getClustersList } from "../../services";
 import Loader from "../../components/loader";
 import ConfirmDialog from "../../components/confirmation";
 
-export default function ClusterList(){
+export default function ClusterList() {
 
     let [tableData, setTableData] = useState([]);
     let [streamUrl, setStreamUrl] = useState("");
@@ -25,103 +25,103 @@ export default function ClusterList(){
 
     const hasFetched = useRef(false);
 
-    const getClusters = async()=>{
-       let data = await getClustersList();
-       let runningTasks = await getRunningTasks();
-       setTableData(data);
-       let mapper: {[key: string]: number} = {}
-       for(let i = 0; i < data.length; i++){
-            const key =`${data[i].name}__${data[i].cloud}`;
+    const getClusters = async () => {
+        let data = await getClustersList();
+        let runningTasks = await getRunningTasks();
+        setTableData(data);
+        let mapper: { [key: string]: number } = {}
+        for (let i = 0; i < data.length; i++) {
+            const key = `${data[i].name}__${data[i].cloud}`;
             console.log(key);
             mapper[key] = i;
-       }
-       disableDelete(runningTasks, mapper);
-       if(data){
-        setShowLoader(false);
-       }
+        }
+        disableDelete(runningTasks, mapper);
+        if (data) {
+            setShowLoader(false);
+        }
     }
 
-    useEffect(()=>{
+    useEffect(() => {
         if (!hasFetched.current) {
             hasFetched.current = true;
             getClusters();
             setShowLoader(false);
         }
-        if(tableData.length === 0){
+        if (tableData.length === 0) {
             setShowLoader(true);
         }
     }, []);
 
 
 
-    const handleDeleteConfirm = async()=>{
-        await deleteCluster(tableData[deleteIndex]["name"], tableData[deleteIndex]["cloud"]);
+    const handleDeleteConfirm = async () => {
+        await deleteCluster(tableData[deleteIndex]["name"], tableData[deleteIndex]["cloud"], tableData[deleteIndex]["key_id"]);
         // openModal();
         setDisabledRows([...disabledRows, deleteIndex])
         setEnableModal(true);
         setConfirmationPopup(false);
         getRunningTasks();
     }
-    
-    
-    const handleDeleteClick = async(i: number)=>{
+
+
+    const handleDeleteClick = async (i: number) => {
         setConfirmationPopup(true);
         setDeleteIndex(i);
     }
 
-    const openModal = ()=>{
+    const openModal = () => {
         setIsModalOpen(true);
         getRunningTasks();
     }
 
-    const closeModal = ()=>{
+    const closeModal = () => {
         setIsModalOpen(false);
     }
 
-    const disableDelete = (runningTasks: RunningTask[], tableDataMapper: {[key: string]: number})=>{
+    const disableDelete = (runningTasks: RunningTask[], tableDataMapper: { [key: string]: number }) => {
         console.log(runningTasks);
         console.log(tableDataMapper);
-        for(let i = 0; i < runningTasks.length; i++){
-            const key =`${runningTasks[i].cluster_name}_${runningTasks[i].location}_${runningTasks[i].cloud}`;
+        for (let i = 0; i < runningTasks.length; i++) {
+            const key = `${runningTasks[i].cluster_name}_${runningTasks[i].location}_${runningTasks[i].cloud}`;
             console.log(key);
-            if(key in tableDataMapper){
+            if (key in tableDataMapper) {
                 setDisabledRows([...disabledRows, tableDataMapper[key]])
             }
         }
     }
 
-    const getRunningTasks = async()=>{
+    const getRunningTasks = async () => {
         let runningTasks = await getRunningLogTasks();
         setRunningTasks(runningTasks);
         return runningTasks
     }
-    const openLogStreamModal = (i: number)=>{
+    const openLogStreamModal = (i: number) => {
         setLogStreamModal(true);
         setStreamUrl(`${runningTasks[i]["stream_url"]}`);
         setIsModalOpen(false);
 
     }
-    const closeLogStreamModal = ()=>{
+    const closeLogStreamModal = () => {
         setLogStreamModal(false)
     }
     // let tableData: GCPKeys[] = []
-    return (showLoader ? <Loader/> :
+    return (showLoader ? <Loader /> :
         <div className="space-y-6">
-            <Modal isOpen={logStreamModal} onClose={()=>closeLogStreamModal()} className="h-200 w-lvh px-10 pt-10" >
-                <LogStream streamUrl={streamUrl}/>
+            <Modal isOpen={logStreamModal} onClose={() => closeLogStreamModal()} className="h-200 w-lvh px-10 pt-10" >
+                <LogStream streamUrl={streamUrl} />
             </Modal>
             <Modal isOpen={isModalOpen} isFullscreen={false} onClose={closeModal} className="h-200 w-lvh px-10 pt-10" >
                 <div>
-                    <LogList runningTasks={runningTasks} openLogStreamModal={openLogStreamModal}/>
+                    <LogList runningTasks={runningTasks} openLogStreamModal={openLogStreamModal} />
                 </div>
                 {/* <LogStream streamUrl={streamUrl} postLogAction={getClusters}/> */}
             </Modal>
             <div className="flex justify-end space-x-4">
                 {
-                enableModal? 
+                    enableModal ?
                         <Button className="" onClick={openModal}>
                             Show Running Tasks
-                        </Button>: null
+                        </Button> : null
                 }
                 <Button>
                     <Link to="/add-cluster">
@@ -129,8 +129,11 @@ export default function ClusterList(){
                     </Link>
                 </Button>
             </div>
-            {showConfirmationPopup ? <ConfirmDialog message={"Are you sure you want to delete this cluster?"} onConfirm={handleDeleteConfirm} onCancel={()=>{setConfirmationPopup(false);}}/>: null}
-            <ClusterTable tableData={tableData} onDelete={handleDeleteClick} disabledRows={disabledRows}/>
+            <div>
+                Please check active configuration before deleting clusters
+            </div>
+            {showConfirmationPopup ? <ConfirmDialog message={"Are you sure you want to delete this cluster?"} onConfirm={handleDeleteConfirm} onCancel={() => { setConfirmationPopup(false); }} /> : null}
+            <ClusterTable tableData={tableData} onDelete={handleDeleteClick} disabledRows={disabledRows} />
         </div>
     )
 }

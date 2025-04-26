@@ -62,11 +62,12 @@ const getRunningLogTasks = async () => {
         });
     }
 
+
     return logStreamFinal;
 };
 
 const addCluster = async (body: Object, cloud: string) => {
-    let response = await fetch(`${baseUrl}/api/${cloud}/add-cluster/`, {
+    let response = await fetch(`http://localhost:8000/api/${cloud}/add-cluster`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -77,8 +78,8 @@ const addCluster = async (body: Object, cloud: string) => {
     return data
 };
 
-const deleteCluster = async (clusterName: string, cloud: string) => {
-    let response = await fetch(`${baseUrl}/api/${cloud.toLowerCase()}/delete-cluster/${clusterName}`,
+const deleteCluster = async (clusterName: string, cloud: string, key_id: string) => {
+    let response = await fetch(`${baseUrl}/api/${cloud.toLowerCase()}/delete-cluster/${clusterName}/${key_id}`,
         {
             method: "DELETE"
         }
@@ -101,7 +102,6 @@ const getKeys = async (cloud: string) => {
 }
 
 const addKeys = async (body: Object, cloud: string) => {
-    console.log("here")
     let response = await fetch(`${baseUrl}/api/${cloud}/add-keys/`, {
         method: "POST",
         headers: {
@@ -159,13 +159,14 @@ const logout = async () => {
     await fetch(`${baseUrl}/api/common/logout`);
 }
 
-const checkSession = async()=>{
-    let response = await fetch(`${baseUrl}/api/common/check-session`);
+const checkSession = async () => {
+    let response = await fetch(`/api/common/check-session`);
+    console.log(response);
     return response
 }
 
-const getAuthUrl = ()=>{
-    return  `${baseUrl}/api/common/oauth`
+const getAuthUrl = () => {
+    return `${baseUrl}/api/common/oauth`
 }
 
 

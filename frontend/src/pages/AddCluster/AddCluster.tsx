@@ -192,6 +192,9 @@ export default function AddCluster(){
                 <LogList runningTasks={runningTasks} openLogStreamModal={openLogStreamModal}/>
             </Modal>
             }
+            <div>
+                Please check active configuration before adding clusters
+            </div>
             <div className="space-y-6">
                 <Label htmlFor="input">Cluster Name</Label>
                 <Input type="text" id="input" onChange={(e)=>handleClusterNameChange(e.target.value)} error={error} hint={errorText} />
@@ -200,7 +203,7 @@ export default function AddCluster(){
                 <Label htmlFor="input">Node Count</Label>
                 <Input type="number" id="input" onChange={(e)=>handleNodeCountChange(e.target.value)} error={nodeCountError} hint={nodeCountErrorText}/>
             </div>
-
+            
             
             <div className="space-y-6">
                 <SelectInputs  options={cloud_options} label={"Select Cloud"} handleSelectChange={handleCloudChange}/>

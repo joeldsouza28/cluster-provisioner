@@ -150,9 +150,9 @@ async def add_cluster(
     }
 
 
-@api_router.delete("/delete-cluster/{cluster_name}")
+@api_router.delete("/delete-cluster/{cluster_name}/{project_id}")
 async def delete_cluster(
-    cluster_name: str, background_tasks: BackgroundTasks, db=Depends(get_db_connection)
+    cluster_name: str, project_id: str, background_tasks: BackgroundTasks, db=Depends(get_db_connection)
 ):
     """
     API to delete a specific GKE cluster.
@@ -160,7 +160,7 @@ async def delete_cluster(
     """
     gcp_utils = GCPUtils(db=db)
     tf_utils = TerraformUtils(db=db)
-    await gcp_utils.set_gcp_env()
+    await gcp_utils.set_gcp_env(id=project_id)
 
     project_id = os.environ.get("TF_VAR_project_id")
     bucket_data = await gcp_utils.get_remote_bucket(project_id=project_id)
