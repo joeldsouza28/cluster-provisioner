@@ -6,6 +6,7 @@ from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
 from starlette.responses import RedirectResponse
 import os
+from backend.settings import settings
 
 api_router = APIRouter()
 
@@ -24,8 +25,8 @@ def stream_logs(req: Request):
     )
 
 
-client_id = os.environ.get("GITHUB_CLIENT_ID")
-client_secret = os.environ.get("GITHUB_CLIENT_SECRET")
+client_id = settings.github_client_id
+client_secret = settings.github_client_secret
 
 config_data = {
     "GITHUB_CLIENT_ID": client_id,
