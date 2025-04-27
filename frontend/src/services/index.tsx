@@ -14,7 +14,7 @@ type RunningTask = {
     stream_url: string;
 }
 
-const baseUrl = "http://localhost:8000"
+const baseUrl = ""
 
 
 const getRegions = async (cloud: string) => {
