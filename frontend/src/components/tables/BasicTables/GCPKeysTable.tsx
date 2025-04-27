@@ -16,6 +16,7 @@ export interface GCPKeys {
   type: string;
   created_at: string;
   active: boolean;
+  display_name: string;
 }
 
 type GCPKeysTableProps = {
@@ -44,6 +45,12 @@ export default function GCPKeysTable({ tableData, onDelete, setActive }: GCPKeys
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
                 Project Id
+              </TableCell>
+              <TableCell
+                isHeader
+                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+              >
+                Project Name
               </TableCell>
               <TableCell
                 isHeader
@@ -97,6 +104,11 @@ export default function GCPKeysTable({ tableData, onDelete, setActive }: GCPKeys
                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                   <div className="flex items-center gap-3">
                     {gcp_key.project_id}
+                  </div>
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                  <div className="flex items-center gap-3">
+                    {gcp_key.display_name}
                   </div>
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">

@@ -117,7 +117,7 @@ async def set_active(active_key: ActiveKey, db=Depends(get_db_connection)):
     return {"message": "Key successfully activated"}
 
 
-@api_router.post("/add-cluster/")
+@api_router.post("/add-cluster")
 async def add_cluster(
     gcp_cluster_details: GCPClusterDetails,
     background_tasks: BackgroundTasks,

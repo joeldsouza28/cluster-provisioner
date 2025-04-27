@@ -6,6 +6,7 @@ from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
 from starlette.responses import RedirectResponse
 import os
+from backend.settings import settings
 
 api_router = APIRouter()
 
@@ -23,30 +24,30 @@ def stream_logs(req: Request):
         },
     )
 
-client_id = os.environ.get("GITHUB_CLIENT_ID")
-client_secret = os.environ.get("GITHUB_CLIENT_SECRET")
+
+client_id = settings.github_client_id
+client_secret = settings.github_client_secret
 
 config_data = {
-    'GITHUB_CLIENT_ID': client_id,
-    'GITHUB_CLIENT_SECRET': client_secret,
+    "GITHUB_CLIENT_ID": client_id,
+    "GITHUB_CLIENT_SECRET": client_secret,
 }
-
-
 
 
 config = Config(environ=config_data)
 oauth = OAuth(config)
 oauth.register(
-    name='github',
+    name="github",
     client_id=config_data["GITHUB_CLIENT_ID"],
     client_secret=config_data["GITHUB_CLIENT_SECRET"],
-    access_token_url='https://github.com/login/oauth/access_token',
+    access_token_url="https://github.com/login/oauth/access_token",
     access_token_params=None,
-    authorize_url='https://github.com/login/oauth/authorize',
+    authorize_url="https://github.com/login/oauth/authorize",
     authorize_params=None,
-    api_base_url='https://api.github.com/',
-    client_kwargs={'scope': 'user:email read:user'},
+    api_base_url="https://api.github.com/",
+    client_kwargs={"scope": "user:email read:user"},
 )
+
 
 @api_router.get("/check-session")
 async def check_session(request: Request):
@@ -56,28 +57,25 @@ async def check_session(request: Request):
         return RedirectResponse("/login")
     else:
         print("here1")
-        return {
-            "user": request.session["user"]
-        }
+        return {"user": request.session["user"]}
 
 
 @api_router.get("/logout")
 async def logout(request: Request):
     request.session["user"] = None
-    return {
-        "message": "Logged out"
-    } 
+    return {"message": "Logged out"}
+
 
 @api_router.get("/oauth")
 async def oauth_login(request: Request):
-    redirect_uri = request.url_for('auth')
+    redirect_uri = request.url_for("auth")
     return await oauth.github.authorize_redirect(request, redirect_uri)
 
 
 @api_router.get("/callback", name="auth")
 async def auth(request: Request):
     token = await oauth.github.authorize_access_token(request)
-    profile = await oauth.github.get('user', token=token)
+    profile = await oauth.github.get("user", token=token)
     user_data = profile.json()
     print(user_data)
     request.session["user"] = user_data
@@ -94,14 +92,20 @@ async def get_gke_clusters(db=Depends(get_db_connection)):
     azure_keys = await azure_utils.get_azure_keys()
     gcp_keys = await gcp_utils.get_gcp_keys()
 
+    await azure_utils.set_azure_env()
+
+    gcp_mapper = await gcp_utils.get_project_name()
+
     for key in azure_keys:
         await azure_utils.set_azure_env(key_id=key["subscription_id"])
-        azure_clusters += azure_utils.list_azure_clusters()
-    
+        azure_subscription_mapper = azure_utils.get_subscriptions()
+        azure_clusters += azure_utils.list_azure_clusters(
+            azure_subscription_mapper=azure_subscription_mapper
+        )
+
     for key in gcp_keys:
         await gcp_utils.set_gcp_env(id=key["project_id"])
-        gke_clusters += gcp_utils.list_gke_clusters()
-
+        gke_clusters += gcp_utils.list_gke_clusters(gcp_mapper)
 
     return {"clusters": gke_clusters + azure_clusters}
 

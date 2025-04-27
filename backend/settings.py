@@ -33,8 +33,12 @@ class Settings(BaseSettings):
     # Enable uvicorn reloading
     reload: bool = False
 
+    github_client_id: str = ""
+    github_client_secret: str = ""
     # Current environment
     environment: str = "dev"
+
+    db_url: str = ""
 
     log_level: LogLevel = LogLevel.INFO
 

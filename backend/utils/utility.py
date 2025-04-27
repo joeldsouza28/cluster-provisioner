@@ -7,13 +7,14 @@ from google.cloud import container_v1
 from google.cloud import compute_v1
 import time
 import subprocess
-from azure.mgmt.resource import ResourceManagementClient
+from azure.mgmt.resource import ResourceManagementClient, SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import BlobServiceClient
 import requests
 from google.cloud import storage
 from fastapi import HTTPException
 from fastapi import status
+from google.cloud import resourcemanager_v3
 
 GCP_KEY_PATH = "/tmp/gcp_sa_key.json"  # Temporary storage for the key
 
@@ -181,7 +182,17 @@ class GCPUtils:
     async def get_gcp_keys(self):
         gcp_dao = GcpDao(db=self.db)
         gcp_keys = await gcp_dao.get_gcp_keys()
-        return gcp_keys
+        gcp_keys_list = []
+        for gcp_key in gcp_keys:
+            await self.set_gcp_env(id=gcp_key["project_id"])
+            client = resourcemanager_v3.ProjectsClient()
+            project_path = f"projects/{gcp_key['project_id']}"
+            project = client.get_project(name=project_path)
+            gcp_keys_list.append({
+                **gcp_key,
+                "display_name": project.display_name
+            })
+        return gcp_keys_list
 
     async def initialize_backend(self, bucket_name):
         backend_config = f"""bucket  = "{bucket_name}"
@@ -205,7 +216,7 @@ class GCPUtils:
 
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
             os.environ["TF_VAR_project_id"] = gcp_keys["project_id"]
-            
+
         return gcp_keys
 
     def update_gcp_tfvars(self, cluster_data):
@@ -254,7 +265,7 @@ class GCPUtils:
         with open(tf_vars_path, "w") as f:
             json.dump(tf_vars, f, indent=2)
 
-    def list_gke_clusters(self):
+    def list_gke_clusters(self, gcp_mapper):
         """Lists GKE clusters in a given project and region."""
         # parent = f"projects/{project_id}/locations/{region}"
         gke_cluster_status = {
@@ -282,13 +293,27 @@ class GCPUtils:
                         "location": cluster.location,
                         "status": gke_cluster_status[cluster.status],
                         "cloud": "GCP",
-                        "key_id": project_id
+                        "key_id": project_id,
+                        "display_name": gcp_mapper[project_id],
                     }
                 )
             return all_clusters
 
-        except Exception:
+        except Exception as ex:
+            print(ex)
             return []
+
+    async def get_project_name(self):
+        keys = await self.get_gcp_keys()
+        gcp_mapper = {}
+        for key in keys:
+            await self.set_gcp_env(id=key["project_id"])
+            client = resourcemanager_v3.ProjectsClient()
+            project_path = f"projects/{key['project_id']}"
+            project = client.get_project(name=project_path)
+            gcp_mapper[key["project_id"]] = project.display_name
+
+        return gcp_mapper
 
 
 class AzureUtil:
@@ -302,7 +327,14 @@ class AzureUtil:
     async def get_azure_keys(self):
         azure_dao = AzureDao(db=self.db)
         azure_keys = await azure_dao.get_azure_keys()
-        return azure_keys
+        azure_key_list = []
+        for azure_key in azure_keys:
+            await self.set_azure_env(key_id=azure_key["subscription_id"])
+            azure_mapper = self.get_subscriptions()
+            azure_key_list.append(
+                {**azure_key, "display_name": azure_mapper[azure_key["subscription_id"]]}
+            )
+        return azure_key_list
 
     async def get_azure_regions(self):
         credential = DefaultAzureCredential()
@@ -359,7 +391,7 @@ class AzureUtil:
             os.environ["ARM_SUBSCRIPTION_ID"] = azure_key["subscription_id"]
             os.environ["ARM_TENANT_ID"] = azure_key["tenant_id"]
             os.environ["TF_VAR_subscription_id"] = azure_key["subscription_id"]
-            
+
         return azure_key
 
         # azure_bucket_data = await azure_dao.get_azure_remote_bucket()
@@ -424,7 +456,16 @@ class AzureUtil:
         with open(tf_vars_path, "w") as f:
             json.dump(tf_vars, f, indent=2)
 
-    def list_azure_clusters(self):
+    def get_subscriptions(self):
+        credential = DefaultAzureCredential()
+        subscription_client = SubscriptionClient(credential)
+        subscription_mapper = {}
+        for sub in subscription_client.subscriptions.list():
+            subscription_mapper[sub.subscription_id] = sub.display_name
+
+        return subscription_mapper
+
+    def list_azure_clusters(self, azure_subscription_mapper):
         try:
             credential = DefaultAzureCredential()
             SUBSCRIPTION_ID = os.environ.get("TF_VAR_subscription_id")
@@ -440,12 +481,14 @@ class AzureUtil:
                         "location": cluster.location,
                         "status": cluster.provisioning_state,
                         "cloud": "Azure",
-                        "key_id": SUBSCRIPTION_ID
+                        "key_id": SUBSCRIPTION_ID,
+                        "display_name": azure_subscription_mapper[SUBSCRIPTION_ID],
                     }
                 )
 
             return cluster_list
-        except Exception:
+        except Exception as ex:
+            print(ex)
             return []
 
     async def create_azure_container(

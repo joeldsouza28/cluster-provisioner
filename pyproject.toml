@@ -36,7 +36,8 @@ dependencies = [
     "azure-mgmt-storage (>=22.1.1,<23.0.0)",
     "authlib (>=1.5.2,<2.0.0)",
     "itsdangerous (>=2.2.0,<3.0.0)",
-    "alembic (>=1.15.2)"
+    "alembic (>=1.15.2)",
+    "google-cloud-resource-manager (>=1.14.2,<2.0.0)"
 ]
 
 
