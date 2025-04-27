@@ -15,6 +15,7 @@ export interface AzureKeys {
     subscription_id: string;
     created_at: string;
     active: boolean
+    display_name: string;
 }
 
 type AzureKeysProps = {
@@ -59,6 +60,12 @@ export default function AzureKeys({tableData, onDelete, setActive}: AzureKeysPro
                     isHeader
                     className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                   >
+                    Subscription Name
+                  </TableCell>
+                  <TableCell
+                    isHeader
+                    className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                  >
                     Created At
                   </TableCell>
                   <TableCell
@@ -93,6 +100,11 @@ export default function AzureKeys({tableData, onDelete, setActive}: AzureKeysPro
                             <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                             <div className="flex -space-x-2">
                                 {azure_key.subscription_id}
+                            </div>
+                            </TableCell>
+                            <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                            <div className="flex -space-x-2">
+                                {azure_key.display_name}
                             </div>
                             </TableCell>
                             <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">

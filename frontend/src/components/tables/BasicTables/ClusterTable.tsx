@@ -14,6 +14,7 @@ export interface ClusterData {
     status: string;
     cloud: string;
     key_id: string;
+    display_name: string;
 }
 
 type ClusterTableProps = {
@@ -60,7 +61,7 @@ export default function ClusterTable({ tableData, onDelete, disabledRows }: Clus
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Project Id/Subscription Id
+                                Project Id/Subscription Name
                             </TableCell>
                             <TableCell
                                 isHeader
@@ -99,7 +100,7 @@ export default function ClusterTable({ tableData, onDelete, disabledRows }: Clus
                                     </TableCell>
                                     <TableCell className="px-5 py-4 sm:px-6 text-start">
                                         <div className="flex items-center gap-3">
-                                            {cluster_data.key_id}
+                                            {cluster_data.display_name}
                                         </div>
                                     </TableCell>
                                     <TableCell className="px-5 py-4 sm:px-6 text-start">

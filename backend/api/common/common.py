@@ -94,13 +94,18 @@ async def get_gke_clusters(db=Depends(get_db_connection)):
     azure_keys = await azure_utils.get_azure_keys()
     gcp_keys = await gcp_utils.get_gcp_keys()
 
+    await azure_utils.set_azure_env()
+
+    gcp_mapper = await gcp_utils.get_project_name()
+
     for key in azure_keys:
         await azure_utils.set_azure_env(key_id=key["subscription_id"])
-        azure_clusters += azure_utils.list_azure_clusters()
+        azure_subscription_mapper = azure_utils.get_subscriptions()
+        azure_clusters += azure_utils.list_azure_clusters(azure_subscription_mapper=azure_subscription_mapper)
     
     for key in gcp_keys:
         await gcp_utils.set_gcp_env(id=key["project_id"])
-        gke_clusters += gcp_utils.list_gke_clusters()
+        gke_clusters += gcp_utils.list_gke_clusters(gcp_mapper)
 
 
     return {"clusters": gke_clusters + azure_clusters}
