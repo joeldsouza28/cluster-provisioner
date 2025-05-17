@@ -118,7 +118,7 @@ export default function GCPKeysTable({ tableData, onDelete, setActive }: GCPKeys
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                   <div className="flex -space-x-2">
-                    {gcp_key.client_id}
+                    {gcp_key.client_email}
                   </div>
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
