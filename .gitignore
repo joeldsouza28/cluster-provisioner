@@ -10,3 +10,4 @@ azure_keys.json
 backend.config
 node_modules/
 dist/
+.env
